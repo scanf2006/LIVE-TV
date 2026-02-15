@@ -1,16 +1,20 @@
 export const XiaohongshuAdapter = {
     async fetchHotTopics() {
+        console.log('[Xiaohongshu] Starting fetchHotTopics...');
         try {
             // 使用顺为数据的小红书热榜API
             // API密钥从环境变量读取
             const apiKey = process.env.XIAOHONGSHU_API_KEY || '';
 
+            console.log('[Xiaohongshu] API Key status:', apiKey ? `Found (${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)})` : 'NOT FOUND');
+
             if (!apiKey) {
-                console.warn('Xiaohongshu API key not configured, using curated topics');
+                console.warn('[Xiaohongshu] API key not configured, using curated topics');
                 return this.getCuratedHotTopics();
             }
 
             const url = `https://api.itapi.cn/api/hotnews/xiaohongshu?key=${apiKey}`;
+            console.log('[Xiaohongshu] Fetching from API...');
 
             const response = await fetch(url, {
                 headers: {
@@ -19,16 +23,20 @@ export const XiaohongshuAdapter = {
                 }
             });
 
+            console.log('[Xiaohongshu] Response status:', response.status);
+
             if (!response.ok) {
-                console.warn(`Xiaohongshu API returned ${response.status}, using curated topics`);
+                console.warn(`[Xiaohongshu] API returned ${response.status}, using curated topics`);
                 return this.getCuratedHotTopics();
             }
 
             const data = await response.json();
+            console.log('[Xiaohongshu] Response code:', data.code);
+            console.log('[Xiaohongshu] Data count:', data.data ? data.data.length : 0);
 
             // 顺为数据API返回格式: { code: 200, data: [ { rank, name, date, viewnum, icon, word_type, url } ] }
             if (data.code !== 200 || !data.data || data.data.length === 0) {
-                console.warn('Xiaohongshu API returned invalid data, using curated topics');
+                console.warn('[Xiaohongshu] API returned invalid data, using curated topics');
                 return this.getCuratedHotTopics();
             }
 
@@ -36,6 +44,8 @@ export const XiaohongshuAdapter = {
 
             // 只取前5条
             const top5 = hotTopics.slice(0, 5);
+            console.log('[Xiaohongshu] Returning', top5.length, 'items');
+            console.log('[Xiaohongshu] First item:', top5[0]?.name);
 
             return top5.map((item, index) => ({
                 id: `xiaohongshu-${Date.now()}-${index}`,
@@ -48,7 +58,7 @@ export const XiaohongshuAdapter = {
                 thumbnail: null  // 不显示图标
             }));
         } catch (error) {
-            console.error('XiaohongshuAdapter Error:', error);
+            console.error('[Xiaohongshu] Error:', error);
             // 如果接口失败,使用精选话题
             return this.getCuratedHotTopics();
         }
