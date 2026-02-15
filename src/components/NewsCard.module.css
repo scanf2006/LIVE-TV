@@ -133,10 +133,11 @@
     font-size: 1.25rem;
     font-weight: 700;
     line-height: 1.6;
-    color: #f8fafc;
+    color: #1e293b;
     flex-grow: 1;
     display: -webkit-box;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
