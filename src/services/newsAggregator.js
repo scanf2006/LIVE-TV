@@ -2,15 +2,17 @@ import { RSSAdapter } from './rssAdapter';
 import { RedditAdapter } from './redditAdapter';
 import { TwitterAdapter } from './twitterAdapter';
 import { WeiboAdapter } from './weiboAdapter';
+import { XiaohongshuAdapter } from './xiaohongshuAdapter';
 
 export const NewsAggregator = {
     async fetchAllNews() {
         try {
-            const [rssNews, redditNews, twitterNews, weiboNews] = await Promise.allSettled([
+            const [rssNews, redditNews, twitterNews, weiboNews, xiaohongshuNews] = await Promise.allSettled([
                 RSSAdapter.fetchAll(),
                 RedditAdapter.fetchTrending(),
                 TwitterAdapter.fetchTrending(),
-                WeiboAdapter.fetchHotSearch()
+                WeiboAdapter.fetchHotSearch(),
+                XiaohongshuAdapter.fetchHotTopics()
             ]);
 
             let allNews = [];
@@ -19,6 +21,7 @@ export const NewsAggregator = {
             if (redditNews.status === 'fulfilled') allNews = allNews.concat(redditNews.value);
             if (twitterNews.status === 'fulfilled') allNews = allNews.concat(twitterNews.value);
             if (weiboNews.status === 'fulfilled') allNews = allNews.concat(weiboNews.value);
+            if (xiaohongshuNews.status === 'fulfilled') allNews = allNews.concat(xiaohongshuNews.value);
 
             // Translation Step
             try {
@@ -32,8 +35,8 @@ export const NewsAggregator = {
 
                 await Promise.allSettled(newsToTranslate.map(async (item) => {
                     if (!item.titleOriginal) return;
-                    // 微博内容已是中文,跳过翻译
-                    if (item.source === 'Weibo') {
+                    // 微博和小红书内容已是中文,跳过翻译
+                    if (item.source === 'Weibo' || item.source === 'Xiaohongshu') {
                         item.titleTranslated = item.titleOriginal;
                         return;
                     }

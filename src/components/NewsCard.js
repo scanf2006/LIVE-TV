@@ -6,6 +6,7 @@ const getBadgeClass = (sourceParam) => {
     if (source.includes('twitter') || source.includes('x')) return styles.sourceTwitter;
     if (source.includes('youtube')) return styles.sourceYouTube;
     if (source.includes('weibo')) return styles.sourceWeibo;
+    if (source.includes('xiaohongshu')) return styles.sourceXiaohongshu;
     return styles.sourceNews;
 };
 
