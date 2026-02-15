@@ -1,5 +1,5 @@
 // YouTube热门视频适配器
-// 获取最近7天内观看次数最高的5个视频
+// 获取热门视频前5个
 export const YouTubeAdapter = {
     async fetchTrending() {
         try {
@@ -9,49 +9,29 @@ export const YouTubeAdapter = {
                 return this.getFallbackVideos();
             }
 
-            // 计算7天前的日期
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            const publishedAfter = sevenDaysAgo.toISOString();
+            // YouTube Data API v3 - 获取热门视频(前5个)
+            const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&chart=mostPopular&regionCode=US&maxResults=5&key=${apiKey}`;
 
-            // 使用search API获取最近7天观看次数最高的视频
-            const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=viewCount&publishedAfter=${publishedAfter}&maxResults=5&regionCode=US&key=${apiKey}`;
-
-            const searchResponse = await fetch(searchUrl, {
-                headers: { 'Accept': 'application/json' }
+            const response = await fetch(url, {
+                headers: {
+                    'Accept': 'application/json'
+                }
             });
 
-            if (!searchResponse.ok) {
-                const errorText = await searchResponse.text();
-                console.error(`[YouTube] Search API error (${searchResponse.status}):`, errorText);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[YouTube] API error (${response.status}):`, errorText);
                 return this.getFallbackVideos();
             }
 
-            const searchData = await searchResponse.json();
+            const data = await response.json();
 
-            if (!searchData.items || searchData.items.length === 0) {
+            if (!data.items || data.items.length === 0) {
+                console.error('[YouTube] No items returned');
                 return this.getFallbackVideos();
             }
 
-            // 获取视频详细信息(包括统计数据)
-            const videoIds = searchData.items.map(item => item.id.videoId).join(',');
-            const videosUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoIds}&key=${apiKey}`;
-
-            const videosResponse = await fetch(videosUrl, {
-                headers: { 'Accept': 'application/json' }
-            });
-
-            if (!videosResponse.ok) {
-                return this.getFallbackVideos();
-            }
-
-            const videosData = await videosResponse.json();
-
-            if (!videosData.items || videosData.items.length === 0) {
-                return this.getFallbackVideos();
-            }
-
-            return videosData.items.map((item, index) => ({
+            return data.items.map((item, index) => ({
                 id: `youtube-${item.id}-${index}`,
                 source: 'YouTube',
                 titleOriginal: item.snippet.title,
