@@ -52,7 +52,7 @@ export const YouTubeAdapter = {
                 url: `https://www.youtube.com/watch?v=${item.id}`,
                 timestamp: item.snippet.publishedAt || new Date().toISOString(),
                 views: this.formatViews(item.statistics?.viewCount),
-                thumbnail: item.snippet.thumbnails?.medium?.url || null
+                thumbnail: null // 不显示缩略图,保持一致性
             }));
         } catch (error) {
             console.error('[YouTube] Exception:', error.message);
