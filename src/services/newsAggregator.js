@@ -3,16 +3,18 @@ import { RedditAdapter } from './redditAdapter';
 import { TwitterAdapter } from './twitterAdapter';
 import { WeiboAdapter } from './weiboAdapter';
 import { ZhihuAdapter } from './zhihuAdapter';
+import { YouTubeAdapter } from './youtubeAdapter';
 
 export const NewsAggregator = {
     async fetchAllNews() {
         try {
-            const [rssNews, redditNews, twitterNews, weiboNews, zhihuNews] = await Promise.allSettled([
+            const [rssNews, redditNews, twitterNews, weiboNews, zhihuNews, youtubeNews] = await Promise.allSettled([
                 RSSAdapter.fetchAll(),
                 RedditAdapter.fetchTrending(),
                 TwitterAdapter.fetchTrending(),
                 WeiboAdapter.fetchHotSearch(),
-                ZhihuAdapter.fetchHotTopics()
+                ZhihuAdapter.fetchHotTopics(),
+                YouTubeAdapter.fetchTrending()
             ]);
 
             let allNews = [];
@@ -22,6 +24,7 @@ export const NewsAggregator = {
             if (twitterNews.status === 'fulfilled') allNews = allNews.concat(twitterNews.value);
             if (weiboNews.status === 'fulfilled') allNews = allNews.concat(weiboNews.value);
             if (zhihuNews.status === 'fulfilled') allNews = allNews.concat(zhihuNews.value);
+            if (youtubeNews.status === 'fulfilled') allNews = allNews.concat(youtubeNews.value);
 
             // Translation Step
             try {
