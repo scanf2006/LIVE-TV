@@ -45,7 +45,7 @@ export const XiaohongshuAdapter = {
                 url: item.url || `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(item.name || '')}`,
                 timestamp: new Date().toISOString(),
                 views: item.viewnum || null,
-                thumbnail: item.icon || null
+                thumbnail: null  // 不显示图标
             }));
         } catch (error) {
             console.error('XiaohongshuAdapter Error:', error);
