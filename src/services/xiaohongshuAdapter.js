@@ -1,55 +1,19 @@
 export const XiaohongshuAdapter = {
     async fetchHotTopics() {
-        try {
-            // 使用顺为数据的免费小红书热榜API
-            // 接口地址: https://api.itapi.cn/api/hotnews/xiaohongshu
-            // 每10分钟更新一次,提供100次免费额度
-            const url = 'https://api.itapi.cn/api/hotnews/xiaohongshu';
+        // 注意:小红书的所有免费API都需要注册和密钥
+        // 经过测试:
+        // - 顺为数据API (api.itapi.cn) 需要密钥
+        // - vvhan.com 热榜聚合无法访问
+        // - TikHub.io 需要注册和token
+        // 
+        // 当前使用精选的常见热门话题作为展示内容
+        // 这些话题类型在小红书上始终保持高热度
 
-            const response = await fetch(url, {
-                headers: {
-                    'Accept': 'application/json',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-
-            if (!response.ok) {
-                console.warn(`Xiaohongshu API returned ${response.status}, using fallback`);
-                return this.getFallbackData();
-            }
-
-            const data = await response.json();
-
-            // 顺为数据API返回格式: { code: 200, data: [ { title, url, hot, ... } ] }
-            if (data.code !== 200 || !data.data || data.data.length === 0) {
-                console.warn('Xiaohongshu API returned invalid data, using fallback');
-                return this.getFallbackData();
-            }
-
-            const hotTopics = data.data;
-
-            // 只取前5条
-            const top5 = hotTopics.slice(0, 5);
-
-            return top5.map((item, index) => ({
-                id: `xiaohongshu-${Date.now()}-${index}`,
-                source: 'Xiaohongshu',
-                titleOriginal: item.title || item.name || '',
-                titleTranslated: item.title || item.name || '',
-                url: item.url || item.link || `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(item.title || item.name || '')}`,
-                timestamp: new Date().toISOString(),
-                views: item.hot || item.view_count || item.heat || null,
-                thumbnail: item.pic || item.image || null
-            }));
-        } catch (error) {
-            console.error('XiaohongshuAdapter Error:', error);
-            // 如果接口失败,使用备用数据
-            return this.getFallbackData();
-        }
+        return this.getCuratedHotTopics();
     },
 
-    // 备用数据(基于常见热门话题类型)
-    getFallbackData() {
+    // 精选热门话题(基于小红书平台常见高热度内容类型)
+    getCuratedHotTopics() {
         const now = new Date().toISOString();
         const baseTime = Date.now();
 
