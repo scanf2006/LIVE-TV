@@ -10,11 +10,11 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+    background: linear-gradient(135deg, rgba(147, 197, 253, 0.95) 0%, rgba(196, 181, 253, 0.95) 100%);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(167, 139, 250, 0.3);
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2);
     margin-bottom: 2rem;
 }
 
@@ -35,7 +35,7 @@
 
 .logo {
     font-size: 2rem;
-    filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5));
+    filter: drop-shadow(0 0 10px rgba(167, 139, 250, 0.6));
     animation: rotate 20s linear infinite;
 }
 
