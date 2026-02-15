@@ -17,6 +17,14 @@ export const NewsAggregator = {
                 YouTubeAdapter.fetchTrending()
             ]);
 
+            console.log('[NewsAggregator] YouTube result status:', youtubeNews.status);
+            if (youtubeNews.status === 'fulfilled') {
+                console.log('[NewsAggregator] YouTube data count:', youtubeNews.value?.length || 0);
+                console.log('[NewsAggregator] First YouTube item:', youtubeNews.value?.[0]?.titleOriginal);
+            } else {
+                console.log('[NewsAggregator] YouTube rejected:', youtubeNews.reason);
+            }
+
             let allNews = [];
 
             if (rssNews.status === 'fulfilled') allNews = allNews.concat(rssNews.value);
@@ -25,6 +33,9 @@ export const NewsAggregator = {
             if (weiboNews.status === 'fulfilled') allNews = allNews.concat(weiboNews.value);
             if (zhihuNews.status === 'fulfilled') allNews = allNews.concat(zhihuNews.value);
             if (youtubeNews.status === 'fulfilled') allNews = allNews.concat(youtubeNews.value);
+
+            console.log('[NewsAggregator] Total news count after concat:', allNews.length);
+            console.log('[NewsAggregator] YouTube items in allNews:', allNews.filter(n => n.source === 'YouTube').length);
 
             // Translation Step
             try {
