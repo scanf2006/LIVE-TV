@@ -88,3 +88,12 @@
         margin-bottom: 1rem;
     }
 }
+
+.footer {
+    text-align: center;
+    padding: 2rem 0;
+    color: #475569;
+    font-size: 0.75rem;
+    font-family: monospace;
+    opacity: 0.8;
+}
