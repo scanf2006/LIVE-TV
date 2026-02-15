@@ -74,7 +74,7 @@ export default function NewsFeed() {
             {/* Footer */}
             <footer className={styles.footer}>
                 <div className={styles.footerContent}>
-                    <span>v0.6.2</span>
+                    <span>v0.6.3</span>
                     <span className={styles.separator}>•</span>
                     <span>全球热点新闻聚合</span>
                 </div>
