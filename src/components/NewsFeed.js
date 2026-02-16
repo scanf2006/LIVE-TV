@@ -15,7 +15,6 @@ export default function NewsFeed() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [cacheStatus, setCacheStatus] = useState(null);
 
-
     const INITIAL_DISPLAY_COUNT = 12; // 初始显示12条,备选池更多
 
     const fetchNews = async (forceRefresh = false) => {
@@ -98,6 +97,17 @@ export default function NewsFeed() {
                 const newCard = reservePool[0];
                 setReservePool(pool => pool.slice(1));
                 return [...filtered, newCard];
+            }
+
+            // 备用池用完后,从allNews中取排名靠后的新闻
+            const displayedIds = new Set(filtered.map(item => item.id));
+            const nextNews = allNews.find(item =>
+                !displayedIds.has(item.id) &&
+                !newDeletedIds.includes(item.id)
+            );
+
+            if (nextNews) {
+                return [...filtered, nextNews];
             }
 
             return filtered;
@@ -184,7 +194,7 @@ export default function NewsFeed() {
             {/* Footer */}
             <footer className={styles.footer}>
                 <div className={styles.footerContent}>
-                    <span>v0.10.1</span>
+                    <span>v0.11.0</span>
                     <span>•</span>
                     <span>下拉刷新</span>
                     <span>•</span>
