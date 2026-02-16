@@ -2,10 +2,8 @@
 // 使用今日热榜API: https://api.vvhan.com/api/hotlist?type=bilibili
 export const BilibiliAdapter = {
     async fetchHotSearch() {
-        console.log('[Bilibili] Starting fetchHotSearch...');
         try {
             const url = 'https://api.vvhan.com/api/hotlist?type=bilibili';
-            console.log('[Bilibili] Fetching from API...');
 
             const response = await fetch(url, {
                 headers: {
@@ -14,15 +12,12 @@ export const BilibiliAdapter = {
                 }
             });
 
-            console.log('[Bilibili] Response status:', response.status);
-
             if (!response.ok) {
                 console.warn(`[Bilibili] API returned ${response.status}, using fallback`);
                 return this.getFallbackTopics();
             }
 
             const data = await response.json();
-            console.log('[Bilibili] Response success:', data.success);
 
             // 今日热榜API返回格式: { success: true, title: "哔哩哔哩", data: [...] }
             if (!data.success || !data.data || data.data.length === 0) {
@@ -34,8 +29,6 @@ export const BilibiliAdapter = {
 
             // 只取前5条
             const top5 = hotSearchList.slice(0, 5);
-            console.log('[Bilibili] Returning', top5.length, 'items');
-            console.log('[Bilibili] First item:', top5[0]?.title);
 
             return top5.map((item, index) => ({
                 id: `bilibili-${Date.now()}-${index}`,
@@ -59,7 +52,7 @@ export const BilibiliAdapter = {
         const now = new Date().toISOString();
         const baseTime = Date.now();
 
-        console.log('[Bilibili] Returning fallback topics');
+
 
         return [
             {

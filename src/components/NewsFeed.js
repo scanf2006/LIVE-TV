@@ -48,6 +48,7 @@ export default function NewsFeed() {
                 // 缓存数据
                 APICache.set('news', data.data);
 
+                // 更新缓存状态
                 setCacheStatus({
                     fromCache: false,
                     age: 0,
@@ -62,17 +63,19 @@ export default function NewsFeed() {
         }
     };
 
-    // 手动刷新
     const handleRefresh = () => {
         setIsRefreshing(true);
-        fetchNews(true);
+        fetchNews(true); // 强制刷新
     };
 
     useEffect(() => {
         fetchNews();
 
-        // 自动刷新(10分钟)
-        const interval = setInterval(() => fetchNews(true), 10 * 60 * 1000);
+        // 每10分钟自动刷新
+        const interval = setInterval(() => {
+            fetchNews(true);
+        }, 10 * 60 * 1000);
+
         return () => clearInterval(interval);
     }, []);
 
@@ -99,27 +102,32 @@ export default function NewsFeed() {
                                 {cacheStatus.fromCache ? '📦' : '🆕'}
                             </span>
                         )}
+                    </div>
+                </div>
+            </nav>
+
+            {/* News Grid */}
+            <div className={styles.grid}>
+                {loading && news.length === 0 ? (
+                    <>
                         {[...Array(6)].map((_, i) => (
                             <div key={i} className={styles.skeletonCard}></div>
                         ))}
-                    </div>
-                    ) : (
-                    <div className={styles.grid}>
-                        {news.map(item => (
-                            <NewsCard key={item.id} item={item} />
-                        ))}
-                    </div>
-                    )
-    }
+                    </>
+                ) : (
+                    news.map((item) => (
+                        <NewsCard key={item.id} news={item} />
+                    ))
+                )}
+            </div>
 
-                    {/* Footer */}
-                    <footer className={styles.footer}>
-                        <div className={styles.footerContent}>
-                            <span>v0.7.2</span>
-                            <span className={styles.separator}>•</span>
-                            <span>全球热点新闻聚合</span>
-                        </div>
-                    </footer>
-                </div >
-                );
+            {/* Footer */}
+            <footer className={styles.footer}>
+                <div className={styles.footerContent}>
+                    <span>v0.9.1</span>
+                    <span>全球热点新闻聚合</span>
+                </div>
+            </footer>
+        </div>
+    );
 }
