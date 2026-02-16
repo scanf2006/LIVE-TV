@@ -3,33 +3,76 @@
 import { useState, useEffect } from 'react';
 import NewsCard from './NewsCard';
 import styles from './NewsFeed.module.css';
+import { APICache } from '@/lib/cache';
 
 export default function NewsFeed() {
     const [news, setNews] = useState([]);
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [cacheStatus, setCacheStatus] = useState(null);
 
-    const fetchNews = async () => {
+    const fetchNews = async (forceRefresh = false) => {
         setLoading(true);
+
         try {
+            // 检查缓存(除非强制刷新)
+            if (!forceRefresh) {
+                const cached = APICache.get('news');
+                if (cached) {
+                    setNews(cached);
+                    setLoading(false);
+
+                    // 获取缓存信息
+                    const cacheInfo = APICache.getInfo('news');
+                    if (cacheInfo) {
+                        setCacheStatus({
+                            fromCache: true,
+                            age: Math.floor(cacheInfo.age / 1000), // 转换为秒
+                            remaining: Math.floor(cacheInfo.remaining / 1000)
+                        });
+                    }
+
+                    return;
+                }
+            }
+
+            // 请求API
             const res = await fetch('/api/news');
             const data = await res.json();
+
             if (data.success) {
                 setNews(data.data);
                 setLastUpdated(new Date());
+
+                // 缓存数据
+                APICache.set('news', data.data);
+
+                setCacheStatus({
+                    fromCache: false,
+                    age: 0,
+                    remaining: 600 // 10分钟
+                });
             }
         } catch (error) {
             console.error('Failed to fetch news:', error);
         } finally {
             setLoading(false);
+            setIsRefreshing(false);
         }
+    };
+
+    // 手动刷新
+    const handleRefresh = () => {
+        setIsRefreshing(true);
+        fetchNews(true);
     };
 
     useEffect(() => {
         fetchNews();
 
-        // Auto-refresh every hour (3600000 ms)
-        const interval = setInterval(fetchNews, 3600000);
+        // 自动刷新(10分钟)
+        const interval = setInterval(() => fetchNews(true), 10 * 60 * 1000);
         return () => clearInterval(interval);
     }, []);
 
@@ -38,47 +81,56 @@ export default function NewsFeed() {
             {/* Top Navigation Bar */}
             <nav className={styles.navbar}>
                 <div className={styles.navContent}>
-                    <div className={styles.brand}>
+                    <div className={styles.brandSection}>
                         <span className={styles.logo}>🌐</span>
-                        <h1 className={styles.appName}>Global News</h1>
+                        <h1 className={styles.appName}>全球热点</h1>
                     </div>
                     <div className={styles.navActions}>
-                        {lastUpdated && (
-                            <span className={styles.lastUpdated}>
-                                更新于: {lastUpdated.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                        <button
+                            onClick={handleRefresh}
+                            className={styles.refreshButton}
+                            disabled={isRefreshing}
+                            title="刷新新闻"
+                        >
+                            {isRefreshing ? '🔄' : '↻'}
+                        </button>
+                        {cacheStatus && (
+                            <span className={styles.cacheStatus} title={`缓存年龄: ${cacheStatus.age}秒`}>
+                                {cacheStatus.fromCache ? '📦' : '🆕'}
                             </span>
                         )}
-                        <button onClick={fetchNews} className={styles.refreshBtn} disabled={loading}>
-                            <span className={styles.refreshIcon}>↻</span>
-                            {loading ? '刷新中...' : '刷新'}
-                        </button>
-                    </div>
+                        <span className={styles.refreshIcon}>↻</span>
+                        {loading ? '刷新中...' : '刷新'}
+                    </button>
                 </div>
-            </nav>
-
-            {/* News Grid */}
-            {loading && news.length === 0 ? (
-                <div className={styles.grid}>
-                    {[...Array(6)].map((_, i) => (
-                        <div key={i} className={styles.skeletonCard}></div>
-                    ))}
-                </div>
-            ) : (
-                <div className={styles.grid}>
-                    {news.map(item => (
-                        <NewsCard key={item.id} item={item} />
-                    ))}
-                </div>
-            )}
-
-            {/* Footer */}
-            <footer className={styles.footer}>
-                <div className={styles.footerContent}>
-                    <span>v0.7.2</span>
-                    <span className={styles.separator}>•</span>
-                    <span>全球热点新闻聚合</span>
-                </div>
-            </footer>
         </div>
+            </nav >
+
+        {/* News Grid */ }
+    {
+        loading && news.length === 0 ? (
+            <div className={styles.grid}>
+                {[...Array(6)].map((_, i) => (
+                    <div key={i} className={styles.skeletonCard}></div>
+                ))}
+            </div>
+        ) : (
+        <div className={styles.grid}>
+            {news.map(item => (
+                <NewsCard key={item.id} item={item} />
+            ))}
+        </div>
+    )
+    }
+
+    {/* Footer */ }
+    <footer className={styles.footer}>
+        <div className={styles.footerContent}>
+            <span>v0.7.2</span>
+            <span className={styles.separator}>•</span>
+            <span>全球热点新闻聚合</span>
+        </div>
+    </footer>
+        </div >
     );
 }
