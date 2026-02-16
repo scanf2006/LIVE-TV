@@ -15,7 +15,8 @@ export default function NewsFeed() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [cacheStatus, setCacheStatus] = useState(null);
 
-    const INITIAL_DISPLAY_COUNT = 20; // 初始显示20条
+
+    const INITIAL_DISPLAY_COUNT = 12; // 初始显示12条,备选池更多
 
     const fetchNews = async (forceRefresh = false) => {
         setLoading(true);
