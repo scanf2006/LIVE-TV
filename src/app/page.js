@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <main className="container">
       <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem', textAlign: 'center' }}>
-        <h1 className="text-gradient" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>
+        <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: '#1e40af', fontWeight: '700' }}>
           全球热点 (Global News)
         </h1>
         <p style={{ color: '#94a3b8' }}>
