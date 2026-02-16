@@ -13,16 +13,16 @@ export default function Home() {
         padding: '1.5rem',
         pointerEvents: 'none'
       }}>
-        {/* 圆角透明玻璃方块 */}
+        {/* 圆角透明玻璃方块 - 与下方网格宽度一致 */}
         <header style={{
-          maxWidth: '600px',
+          maxWidth: '1400px',
           margin: '0 auto',
+          padding: '1.25rem 1.5rem',
           background: 'rgba(255, 255, 255, 0.2)',
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
           border: '1px solid rgba(255, 255, 255, 0.3)',
           borderRadius: '1.5rem',
-          padding: '1.25rem 1.5rem',
           textAlign: 'center',
           boxShadow: '0 8px 32px rgba(59, 130, 246, 0.15)',
           pointerEvents: 'auto'
