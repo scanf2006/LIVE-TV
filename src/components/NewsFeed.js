@@ -79,32 +79,47 @@ export default function NewsFeed() {
         return () => clearInterval(interval);
     }, []);
 
+    // 下拉刷新处理
+    const handleTouchStart = (e) => {
+        if (window.scrollY === 0) {
+            const touch = e.touches[0];
+            window.pullStartY = touch.clientY;
+        }
+    };
+
+    const handleTouchMove = (e) => {
+        if (window.pullStartY && window.scrollY === 0) {
+            const touch = e.touches[0];
+            const pullDistance = touch.clientY - window.pullStartY;
+            if (pullDistance > 100 && !isRefreshing) {
+                handleRefresh();
+                window.pullStartY = null;
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        window.pullStartY = null;
+    };
+
     return (
-        <div className={styles.feedContainer}>
-            {/* Top Navigation Bar */}
-            <nav className={styles.navbar}>
-                <div className={styles.navContent}>
-                    <div className={styles.brandSection}>
-                        <span className={styles.logo}>🌐</span>
-                        <h1 className={styles.appName}>全球热点</h1>
-                    </div>
-                    <div className={styles.navActions}>
-                        <button
-                            onClick={handleRefresh}
-                            className={styles.refreshButton}
-                            disabled={isRefreshing}
-                            title="刷新新闻"
-                        >
-                            {isRefreshing ? '🔄' : '↻'}
-                        </button>
-                        {cacheStatus && (
-                            <span className={styles.cacheStatus} title={`缓存年龄: ${cacheStatus.age}秒`}>
-                                {cacheStatus.fromCache ? '📦' : '🆕'}
-                            </span>
-                        )}
-                    </div>
+        <div
+            className={styles.feedContainer}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
+            {/* 刷新指示器 */}
+            {isRefreshing && (
+                <div style={{
+                    textAlign: 'center',
+                    padding: '1rem',
+                    color: '#3b82f6',
+                    fontSize: '0.875rem'
+                }}>
+                    🔄 正在刷新...
                 </div>
-            </nav>
+            )}
 
             {/* News Grid */}
             <div className={styles.grid}>
@@ -125,7 +140,10 @@ export default function NewsFeed() {
             <footer className={styles.footer}>
                 <div className={styles.footerContent}>
                     <span>v0.9.1</span>
-                    <span>全球热点新闻聚合</span>
+                    <span>•</span>
+                    <span>下拉刷新</span>
+                    <span>•</span>
+                    <span>{cacheStatus?.fromCache ? '📦 缓存' : '🆕 最新'}</span>
                 </div>
             </footer>
         </div>
