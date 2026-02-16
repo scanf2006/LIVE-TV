@@ -116,7 +116,7 @@ export default function NewsFeed() {
                     </>
                 ) : (
                     news.map((item) => (
-                        <NewsCard key={item.id} news={item} />
+                        <NewsCard key={item.id} item={item} />
                     ))
                 )}
             </div>
