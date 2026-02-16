@@ -18,7 +18,9 @@ export default function Home() {
           maxWidth: '1400px',
           margin: '0 auto',
           padding: '0 1.5rem',
-          pointerEvents: 'none'
+          pointerEvents: 'none',
+          width: '100%',
+          boxSizing: 'border-box'
         }}>
           {/* 圆角透明玻璃方块 */}
           <div style={{
@@ -32,7 +34,8 @@ export default function Home() {
             textAlign: 'center',
             boxShadow: '0 8px 32px rgba(59, 130, 246, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.2)',
             pointerEvents: 'auto',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            boxSizing: 'border-box'
           }}>
             {/* 顶部光泽线 */}
             <div style={{
