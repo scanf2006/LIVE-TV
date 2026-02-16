@@ -1,43 +1,27 @@
-import * as cheerio from 'cheerio';
-
+﻿// Weibo Hot Search Adapter
 export const WeiboAdapter = {
     async fetchHotSearch() {
         try {
-            // 尝试从微博官方接口获取热搜数�?
-            const url = 'https://weibo.com/ajax/side/hotSearch';
-
-            const response = await fetch(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Referer': 'https://weibo.com'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Weibo API returned ${response.status}`);
-            }
-
+            const response = await fetch('https://weibo.com/ajax/side/hotSearch');
             const data = await response.json();
 
-            // 微博API返回格式: { data: { realtime: [ { word, num, ... } ] } }
-            const hotSearchList = data?.data?.realtime || [];
+            if (data.ok === 1 && data.data && data.data.realtime) {
+                const hotSearchList = data.data.realtime;
+                const top10 = hotSearchList.slice(0, 10);
 
-            // 只取�?�?
-            const top5 = hotSearchList.slice(0, 10);
+                return top10.map((item, index) => ({
+                    id: weibo--,
+                    title: item.word,
+                    url: https://s.weibo.com/weibo?q=,
+                    source: 'Weibo Hot',
+                    rank: index + 1,
+                    views: item.num || 0
+                }));
+            }
 
-            return top5.map((item, index) => ({
-                id: `weibo-${Date.now()}-${index}`,
-                source: 'Weibo',
-                titleOriginal: item.word || item.word_scheme || '',
-                titleTranslated: item.word || item.word_scheme || '', // 微博已是中文
-                url: `https://s.weibo.com/weibo?q=${encodeURIComponent('#' + (item.word || item.word_scheme) + '#')}`,
-                timestamp: new Date().toISOString(),
-                views: item.num ? String(item.num) : null,
-                thumbnail: item.pic || null
-            }));
+            return [];
         } catch (error) {
-            console.error('WeiboAdapter Error:', error);
-            // 如果官方接口失败,返回空数组而不是抛出错�?
+            console.error('Failed to fetch Weibo hot search:', error);
             return [];
         }
     }
