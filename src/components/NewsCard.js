@@ -11,30 +11,27 @@ export default function NewsCard({ item }) {
             rel="noopener noreferrer"
             className={styles.card}
         >
-            {/* 图片背景层 */}
-            {hasThumbnail ? (
-                <div className={styles.imageBox}>
+            <div className={styles.content}>
+                {/* 缩略图 */}
+                {hasThumbnail ? (
                     <img
                         src={item.thumbnail}
                         alt={item.titleTranslated || item.titleOriginal}
                         className={styles.thumbnail}
                         loading="lazy"
                     />
-                </div>
-            ) : (
-                <div className={styles.placeholderBox}>
-                    <span className={styles.placeholderIcon}>📰</span>
-                </div>
-            )}
+                ) : (
+                    <div className={styles.placeholder}>
+                        📰
+                    </div>
+                )}
 
-            {/* 玻璃覆盖层 */}
-            <div className={styles.glassOverlay}>
-                <div className={styles.content}>
-                    <h3 className={styles.title}>
-                        {item?.titleTranslated || item?.titleOriginal || '无标题'}
-                    </h3>
-                </div>
+                {/* 标题 */}
+                <h3 className={styles.title}>
+                    {item?.titleTranslated || item?.titleOriginal || '无标题'}
+                </h3>
 
+                {/* 元信息 */}
                 <div className={styles.meta}>
                     <span className={styles.source}>{item?.source || '未知来源'}</span>
                     {item?.views && (
