@@ -94,9 +94,4 @@ h6 {
     padding-bottom: 5rem;
     /* Ensure content clears system UI/browser bars */
   }
-
-  h1 {
-    font-size: 1.75rem !important;
-    /* Force smaller header */
-  }
 }
