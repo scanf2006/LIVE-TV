@@ -13,14 +13,16 @@ export default function Home() {
         paddingTop: '1.5rem',
         pointerEvents: 'none'
       }}>
-        {/* 与grid完全相同的布局 */}
+        {/* 与grid完全相同的布局 - 添加调试边框 */}
         <div style={{
           maxWidth: '1400px',
           margin: '0 auto',
           padding: '0 1.5rem',
           pointerEvents: 'none',
           width: '100%',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          // 临时调试边框
+          outline: '2px solid red'
         }}>
           {/* 圆角透明玻璃方块 */}
           <div style={{
