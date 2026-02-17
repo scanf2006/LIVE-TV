@@ -1,20 +1,20 @@
-﻿// 微博热搜适配器 - 集成多个可靠源(包括CDN加速)
+﻿// 微博热搜适配器 - 使用最直接的 GitHub Raw 源
 export const WeiboAdapter = {
     async fetchHotSearch() {
         console.log('--- WeiboAdapter.fetchHotSearch START ---');
 
         try {
-            // 尝试多个API源
+            // 尝试多个API源,优先使用最直接的Raw地址
             const sources = [
                 {
-                    // 方案1: GitHub Pages (Cloudflare CDN)
-                    name: 'github-pages',
-                    url: 'https://weibo-trending-hot-search.pages.dev/hot-search.json',
-                    parser: (data) => parseGithubData(data, 'github-pages')
+                    // 方案1: GitHub Raw (最原始、最直接的数据)
+                    // 使用 Raw URL 可以避免某些 CDN 缓存或 DNS 问题
+                    name: 'github-raw',
+                    url: 'https://raw.githubusercontent.com/justjavac/weibo-trending-hot-search/master/hot-search.json',
+                    parser: (data) => parseGithubData(data, 'github-raw')
                 },
                 {
-                    // 方案2: jsDelivr CDN (GitHub代理) - 非常极速和稳定
-                    // 如果Pages挂了,这个通常还能用
+                    // 方案2: jsDelivr CDN (作为快速备份)
                     name: 'jsdelivr',
                     url: 'https://fastly.jsdelivr.net/gh/justjavac/weibo-trending-hot-search@master/hot-search.json',
                     parser: (data) => parseGithubData(data, 'jsdelivr')
@@ -66,7 +66,7 @@ export const WeiboAdapter = {
                 try {
                     console.log(`Trying Weibo source: ${source.name}`);
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+                    const timeoutId = setTimeout(() => controller.abort(), 6000); // 稍微延长时间给Raw请求
 
                     const response = await fetch(source.url, {
                         headers: {
@@ -77,11 +77,8 @@ export const WeiboAdapter = {
                     clearTimeout(timeoutId);
 
                     if (response.ok) {
-                        // 检查内容类型,防止返回HTML错误页
                         const contentType = response.headers.get('content-type');
-                        if (contentType && contentType.includes('text/html')) {
-                            throw new Error('Received HTML instead of JSON');
-                        }
+                        // GitHub Raw 通常返回 text/plain, 但内容是 JSON
 
                         const data = await response.json();
                         const parsed = source.parser(data);
@@ -142,7 +139,7 @@ function parseGithubData(data, sourceName) {
             rank: index + 1,
             views: item.hot || item.num || 0,
             titleOriginal: item.title || item.word,
-            timestamp: new Date().toISOString() // 必须包含时间戳
+            timestamp: new Date().toISOString()
         }));
     }
     return null;
