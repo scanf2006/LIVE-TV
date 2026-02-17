@@ -1,4 +1,6 @@
-﻿// 微博热搜适配器 - 全面修复版 (Multi-Source + Detailed Logging)
+﻿import { getWeiboGuestCookie } from '../utils/weiboCookieGenerator.js';
+
+// 微博热搜适配器 - 全面修复版 (Multi-Source + Detailed Logging)
 export const WeiboAdapter = {
     async fetchHotSearch() {
         console.log('--- WeiboAdapter.fetchHotSearch START ---');
@@ -6,6 +8,27 @@ export const WeiboAdapter = {
         try {
             // 定义所有可能的数据源,按优先级排序
             const sources = [
+                {
+                    // 0. Weibo Direct (With Auto-Cookie) - 官方接口+模拟访客
+                    name: 'weibo-direct',
+                    url: 'https://weibo.com/ajax/side/hotSearch',
+                    parser: (data) => {
+                        if (data && data.data && data.data.realtime) {
+                            return data.data.realtime.slice(0, 10).map((item, index) => ({
+                                id: `weibo-direct-${index}-${Date.now()}`,
+                                title: item.note || item.word,
+                                url: `https://s.weibo.com/weibo?q=${encodeURIComponent(item.word_scheme || item.word)}`,
+                                source: '微博热搜',
+                                rank: index + 1,
+                                views: item.num,
+                                titleOriginal: item.note || item.word,
+                                timestamp: new Date().toISOString()
+                            }));
+                        }
+                        return null;
+                    },
+                    needsCookie: true // 标记该源需要 Cookie 处理
+                },
                 {
                     // 1. GitHub Raw (Master分支) - 最直接
                     name: 'github-raw-master',
@@ -93,15 +116,38 @@ export const WeiboAdapter = {
 
                     const controller = new AbortController();
                     // 这里的超时时间要足够短以快速失败,但也要足够长以允许连接
+                    // 这里的超时时间要足够短以快速失败,但也要足够长以允许连接
                     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
+                    // 准备请求头
+                    const headers = {
+                        // 模拟浏览器UA,防止被GitHub/CDN拦截
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'application/json, text/plain, */*',
+                        'Cache-Control': 'no-cache',
+                        'Referer': 'https://weibo.com/',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    };
+
+                    // 处理需要 Cookie 的源
+                    if (source.needsCookie) {
+                        try {
+                            const subCookie = await getWeiboGuestCookie();
+                            if (subCookie) {
+                                headers['Cookie'] = `SUB=${subCookie}`;
+                                console.log(`[WeiboAdapter] Using generated cookie for source: ${source.name}`);
+                            } else {
+                                console.warn(`[WeiboAdapter] Failed to generate cookie for ${source.name}, skipping`);
+                                continue;
+                            }
+                        } catch (cookieErr) {
+                            console.error(`[WeiboAdapter] Cookie generation error: ${cookieErr}`);
+                            continue;
+                        }
+                    }
+
                     const response = await fetch(source.url, {
-                        headers: {
-                            // 模拟浏览器UA,防止被GitHub/CDN拦截
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                            'Accept': 'application/json, text/plain, */*',
-                            'Cache-Control': 'no-cache'
-                        },
+                        headers: headers,
                         signal: controller.signal
                     });
                     clearTimeout(timeoutId);
