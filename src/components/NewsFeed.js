@@ -6,29 +6,27 @@ import styles from './NewsFeed.module.css';
 import { APICache } from '@/lib/cache';
 
 export default function NewsFeed() {
-    const [allNews, setAllNews] = useState([]); // 所有新闻
-    const [displayedNews, setDisplayedNews] = useState([]); // 显示的新闻
-    const [reservePool, setReservePool] = useState([]); // 备用池
-    const [deletedIds, setDeletedIds] = useState([]); // 已删除的卡片ID
+    // State to hold news grouped by source
+    // Structure: { sourceName: { displayed: [], reserve: [] } }
+    const [newsBySource, setNewsBySource] = useState({});
+    const [deletedIds, setDeletedIds] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [lastUpdated, setLastUpdated] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [cacheStatus, setCacheStatus] = useState(null);
 
-    const INITIAL_DISPLAY_COUNT = 7; // 显示 Rank 4-10 (共7条)
+    const DISPLAY_PER_SOURCE = 5; // 每类显示5条
+    const RESERVE_PER_SOURCE = 10; // 每类备用10条 (不够则全取)
 
     const fetchNews = async (forceRefresh = false) => {
         setLoading(true);
 
         try {
-            // 检查缓存(除非强制刷新)
+            // Check Cache
             if (!forceRefresh) {
                 const cached = APICache.get('news');
                 if (cached) {
                     initializeNewsLists(cached);
                     setLoading(false);
-
-                    // 获取缓存信息
                     const cacheInfo = APICache.getInfo('news');
                     if (cacheInfo) {
                         setCacheStatus({
@@ -37,23 +35,18 @@ export default function NewsFeed() {
                             remaining: Math.floor(cacheInfo.remaining / 1000)
                         });
                     }
-
                     return;
                 }
             }
 
-            // 请求API
             const res = await fetch('/api/news');
             const data = await res.json();
 
             if (data.success) {
                 initializeNewsLists(data.data);
-                setLastUpdated(new Date());
 
-                // 缓存数据
+                // Cache Data
                 APICache.set('news', data.data);
-
-                // 更新缓存状态
                 setCacheStatus({
                     fromCache: false,
                     age: 0,
@@ -68,56 +61,70 @@ export default function NewsFeed() {
         }
     };
 
-    // 初始化显示列表和备用池
     const initializeNewsLists = (newsData) => {
-        // 从localStorage读取已删除的ID
         const storedDeletedIds = JSON.parse(localStorage.getItem('deletedNewsIds') || '[]');
         setDeletedIds(storedDeletedIds);
 
-        // 过滤掉已删除的新闻
-        // 注意：这里先不切片，保留所有获取到的数据（预期30条）
-        let availableNews = newsData.filter(item => !storedDeletedIds.includes(item.id));
+        // 1. Group all *valid* news by source
+        const groups = {};
 
-        // 逻辑调整:
-        // 1. 丢弃前3条 (Rank 1-3)
-        // 2. 显示接下来的7条 (Rank 4-10)
-        // 3. 剩余的全部放入备用池 (Rank 11-30)
+        newsData.forEach(item => {
+            // Filter deleted
+            if (storedDeletedIds.includes(item.id)) return;
 
-        // 如果数据量不够切掉前3条，就直接显示剩余的
-        if (availableNews.length > 3) {
-            availableNews = availableNews.slice(3);
-        }
+            const source = item.source || 'Other';
+            if (!groups[source]) {
+                groups[source] = [];
+            }
+            groups[source].push(item);
+        });
 
-        setAllNews(availableNews); // allNews 现在是从 Rank 4 开始的所有数据
+        // 2. Process each group (slice display and reserve)
+        const processedGroups = {};
 
-        // 设置初始显示列表 (Rank 4-10)
-        setDisplayedNews(availableNews.slice(0, INITIAL_DISPLAY_COUNT));
+        Object.keys(groups).forEach(source => {
+            let items = groups[source];
 
-        // 设置备用池 (Rank 11-30)
-        setReservePool(availableNews.slice(INITIAL_DISPLAY_COUNT));
+            // 特殊处理微博: 跳过前3条 (Rank 1-3)
+            if (source === '微博热搜' && items.length > 3) {
+                items = items.slice(3);
+            }
+
+            processedGroups[source] = {
+                displayed: items.slice(0, DISPLAY_PER_SOURCE),
+                reserve: items.slice(DISPLAY_PER_SOURCE, DISPLAY_PER_SOURCE + RESERVE_PER_SOURCE)
+            };
+        });
+
+        setNewsBySource(processedGroups);
     };
 
-    // 删除卡片并补充新卡片
-    const handleDeleteCard = (cardId) => {
-        // 更新deletedIds并保存到localStorage
+    const handleDeleteCard = (cardId, source) => {
         const newDeletedIds = [...deletedIds, cardId];
         setDeletedIds(newDeletedIds);
         localStorage.setItem('deletedNewsIds', JSON.stringify(newDeletedIds));
 
-        setDisplayedNews(prev => {
-            const filtered = prev.filter(item => item.id !== cardId);
+        setNewsBySource(prev => {
+            const sourceGroup = prev[source];
+            if (!sourceGroup) return prev; // Should not happen
 
-            // 从备用池取一条补充
-            // 备用池已经是按顺序排列的 (Rank 11, 12, ... 30)
-            // 所以直接取第一个就能满足 "先11-20，再21-30" 的需求
-            if (reservePool.length > 0) {
-                const newCard = reservePool[0];
-                setReservePool(pool => pool.slice(1));
-                return [...filtered, newCard];
+            // Remove from displayed
+            const newDisplayed = sourceGroup.displayed.filter(item => item.id !== cardId);
+            let newReserve = [...sourceGroup.reserve];
+
+            // Refill from reserve if available
+            if (newReserve.length > 0) {
+                const nextItem = newReserve.shift(); // Take first from reserve
+                newDisplayed.push(nextItem);
             }
 
-            // 备用池用完后，不再补充(或者从更后面的数据补充，暂无)
-            return filtered;
+            return {
+                ...prev,
+                [source]: {
+                    displayed: newDisplayed,
+                    reserve: newReserve
+                }
+            };
         });
     };
 
@@ -128,16 +135,13 @@ export default function NewsFeed() {
 
     useEffect(() => {
         fetchNews();
-
-        // 每10分钟自动刷新
         const interval = setInterval(() => {
             fetchNews(true);
         }, 10 * 60 * 1000);
-
         return () => clearInterval(interval);
     }, []);
 
-    // 下拉刷新处理
+    // Touch handling for pull-to-refresh
     const handleTouchStart = (e) => {
         if (window.scrollY === 0) {
             const touch = e.touches[0];
@@ -160,6 +164,21 @@ export default function NewsFeed() {
         window.pullStartY = null;
     };
 
+    // Priority order for sources
+    const SOURCE_ORDER = ['微博热搜', 'X (Twitter)', 'YouTube'];
+
+    // Sort sources: defined ones first, then others alphabetically
+    const sortedSources = Object.keys(newsBySource).sort((a, b) => {
+        const indexA = SOURCE_ORDER.indexOf(a);
+        const indexB = SOURCE_ORDER.indexOf(b);
+
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+
+        return a.localeCompare(b);
+    });
+
     return (
         <div
             className={styles.feedContainer}
@@ -167,41 +186,56 @@ export default function NewsFeed() {
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
         >
-            {/* 刷新指示器 */}
             {isRefreshing && (
-                <div style={{
-                    textAlign: 'center',
-                    padding: '1rem',
-                    color: '#3b82f6',
-                    fontSize: '0.875rem'
-                }}>
+                <div style={{ textAlign: 'center', padding: '1rem', color: '#3b82f6', fontSize: '0.875rem' }}>
                     🔄 正在刷新...
                 </div>
             )}
 
-            {/* News Grid */}
-            <div className={styles.grid}>
-                {loading && displayedNews.length === 0 ? (
-                    <>
-                        {[...Array(6)].map((_, i) => (
-                            <div key={i} className={styles.skeletonCard}></div>
-                        ))}
-                    </>
-                ) : (
-                    displayedNews.map((item) => (
-                        <NewsCard
-                            key={item.id}
-                            item={item}
-                            onDelete={handleDeleteCard}
-                        />
-                    ))
-                )}
-            </div>
+            {loading && Object.keys(newsBySource).length === 0 ? (
+                <div className={styles.grid}>
+                    {[...Array(6)].map((_, i) => (
+                        <div key={i} className={styles.skeletonCard}></div>
+                    ))}
+                </div>
+            ) : (
+                <div className={styles.groupedFeed}>
+                    {sortedSources.map(source => {
+                        const group = newsBySource[source];
+                        if (!group || group.displayed.length === 0) return null;
 
-            {/* Footer */}
+                        return (
+                            <div key={source} className={styles.sourceSection} style={{ marginBottom: '2rem' }}>
+                                <h2 style={{
+                                    padding: '0 1rem 1rem',
+                                    margin: '0 0 1rem 0',
+                                    fontSize: '1.2rem',
+                                    fontWeight: '600',
+                                    color: 'var(--foreground)',
+                                    borderLeft: '4px solid #3b82f6',
+                                    marginLeft: '1rem',
+                                    lineHeight: '1.2'
+                                }}>
+                                    {source}
+                                </h2>
+                                <div className={styles.grid}>
+                                    {group.displayed.map((item) => (
+                                        <NewsCard
+                                            key={item.id}
+                                            item={item}
+                                            onDelete={() => handleDeleteCard(item.id, source)}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
             <footer className={styles.footer}>
                 <div className={styles.footerContent}>
-                    <span>v0.11.0</span>
+                    <span>v0.12.0</span>
                     <span>•</span>
                     <span>下拉刷新</span>
                     <span>•</span>

@@ -25,8 +25,8 @@ export const RSSAdapter = {
 
         try {
             const feed = await parser.parseURL(feedUrl);
-            // Take top 5 from each feed to avoid overwhelming
-            return feed.items.slice(0, 10).map((item, index) => ({
+            // Take top 20 from each feed to ensure backup pool
+            return feed.items.slice(0, 20).map((item, index) => ({
                 id: `rss-${sourceName}-${index}-${Date.now()}`,
                 source: sourceName,
                 titleOriginal: item.title,

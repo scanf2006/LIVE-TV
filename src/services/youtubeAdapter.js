@@ -1,5 +1,5 @@
 // YouTube热门视频适配器
-// 获取热门视频前5个
+// 获取热门视频前20个
 import * as Sentry from "@sentry/nextjs";
 
 export const YouTubeAdapter = {
@@ -11,8 +11,8 @@ export const YouTubeAdapter = {
                 return this.getFallbackVideos();
             }
 
-            // YouTube Data API v3 - 获取热门视频(前5个)
-            const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&chart=mostPopular&regionCode=US&maxResults=5&key=${apiKey}`;
+            // YouTube Data API v3 - 获取热门视频(前20个)
+            const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&chart=mostPopular&regionCode=US&maxResults=20&key=${apiKey}`;
 
             const response = await fetch(url, {
                 headers: {
