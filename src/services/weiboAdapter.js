@@ -1,4 +1,4 @@
-﻿// 微博热搜适配器 - 终极调试版
+﻿// 微博热搜适配器 - 最终修复版(带时间戳)
 export const WeiboAdapter = {
     async fetchHotSearch() {
         console.log('--- WeiboAdapter.fetchHotSearch START ---');
@@ -18,7 +18,8 @@ export const WeiboAdapter = {
                                 source: '微博热搜',
                                 rank: index + 1,
                                 views: item.hot || 0,
-                                titleOriginal: item.title
+                                titleOriginal: item.title,
+                                timestamp: new Date().toISOString() // 关键修复: 添加时间戳
                             }));
                         }
                         return null;
@@ -36,7 +37,8 @@ export const WeiboAdapter = {
                                 source: '微博热搜',
                                 rank: index + 1,
                                 views: item.hot || 0,
-                                titleOriginal: item.title
+                                titleOriginal: item.title,
+                                timestamp: new Date().toISOString() // 关键修复: 添加时间戳
                             }));
                         }
                         return null;
@@ -98,7 +100,8 @@ export const WeiboAdapter = {
             source: '微博热搜',
             rank: index + 1,
             views: 0,
-            titleOriginal: topic
+            titleOriginal: topic,
+            timestamp: new Date().toISOString() // 关键修复: 添加时间戳
         }));
 
         console.log('Fallback data generated:', fallbackData.length);
