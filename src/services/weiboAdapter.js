@@ -1,4 +1,31 @@
 ﻿// 微博热搜适配器 - 使用静态数据作为后备
+
+// 独立的后备数据函数,避免this上下文问题
+function getFallbackData() {
+    const fallbackTopics = [
+        '春节档电影票房创新高',
+        '多地气温回升迎来春天',
+        '科技公司发布新产品',
+        '体育赛事精彩瞬间',
+        '明星动态引发热议',
+        '社会热点事件关注',
+        '经济数据发布',
+        '文化活动精彩纷呈',
+        '教育改革新政策',
+        '健康生活小贴士'
+    ];
+
+    return fallbackTopics.map((topic, index) => ({
+        id: `weibo-fallback-${index}-${Date.now()}`,
+        title: topic,
+        url: `https://s.weibo.com/weibo?q=${encodeURIComponent(topic)}`,
+        source: '微博热搜',
+        rank: index + 1,
+        views: 0,
+        titleOriginal: topic
+    }));
+}
+
 export const WeiboAdapter = {
     async fetchHotSearch() {
         // 尝试多个API源
@@ -68,32 +95,6 @@ export const WeiboAdapter = {
         }
 
         console.log('All Weibo sources failed, using fallback data');
-        return this.getFallbackData();
-    },
-
-    getFallbackData() {
-        // 返回示例数据,至少让用户看到微博热搜的卡片
-        const fallbackTopics = [
-            '春节档电影票房创新高',
-            '多地气温回升迎来春天',
-            '科技公司发布新产品',
-            '体育赛事精彩瞬间',
-            '明星动态引发热议',
-            '社会热点事件关注',
-            '经济数据发布',
-            '文化活动精彩纷呈',
-            '教育改革新政策',
-            '健康生活小贴士'
-        ];
-
-        return fallbackTopics.map((topic, index) => ({
-            id: `weibo-fallback-${index}-${Date.now()}`,
-            title: topic,
-            url: `https://s.weibo.com/weibo?q=${encodeURIComponent(topic)}`,
-            source: '微博热搜',
-            rank: index + 1,
-            views: 0,
-            titleOriginal: topic
-        }));
+        return getFallbackData(); // 直接调用独立函数
     }
 };
