@@ -6,16 +6,14 @@ import styles from './NewsFeed.module.css';
 import { APICache } from '@/lib/cache';
 
 export default function NewsFeed() {
-    // State to hold news grouped by source
-    // Structure: { sourceName: { displayed: [], reserve: [] } }
-    const [newsBySource, setNewsBySource] = useState({});
+    const [displayedNews, setDisplayedNews] = useState([]);
+    const [reservePool, setReservePool] = useState([]);
     const [deletedIds, setDeletedIds] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [cacheStatus, setCacheStatus] = useState(null);
 
-    const DISPLAY_PER_SOURCE = 5; // 每类显示5条
-    const RESERVE_PER_SOURCE = 10; // 每类备用10条 (不够则全取)
+    const INITIAL_DISPLAY_COUNT = 30; // 初始显示数量
 
     const fetchNews = async (forceRefresh = false) => {
         setLoading(true);
@@ -65,66 +63,49 @@ export default function NewsFeed() {
         const storedDeletedIds = JSON.parse(localStorage.getItem('deletedNewsIds') || '[]');
         setDeletedIds(storedDeletedIds);
 
-        // 1. Group all *valid* news by source
-        const groups = {};
+        // 1. Filter and Process
+        let validNews = newsData.filter(item => !storedDeletedIds.includes(item.id));
 
-        newsData.forEach(item => {
-            // Filter deleted
-            if (storedDeletedIds.includes(item.id)) return;
+        // 2. 特殊处理微博: 跳过前3条 (Rank 1-3)
+        //    我们需要先按源分离出微博，处理完后再合并
+        const weiboItems = validNews.filter(item => item.source === '微博热搜');
+        const otherItems = validNews.filter(item => item.source !== '微博热搜');
 
-            const source = item.source || 'Other';
-            if (!groups[source]) {
-                groups[source] = [];
-            }
-            groups[source].push(item);
-        });
+        let processedWeibo = weiboItems;
+        if (processedWeibo.length > 3) {
+            processedWeibo = processedWeibo.slice(3);
+        } else if (processedWeibo.length > 0 && processedWeibo.length <= 3) {
+            // 如果只有3条或更少，全丢弃？或者保留？
+            // 假设是为了去掉置顶广告，通常前3是置顶。如果数据源本来就少，全丢弃可能导致空。
+            // 这里严格执行规则：丢弃前3。
+            processedWeibo = [];
+        }
 
-        // 2. Process each group (slice display and reserve)
-        const processedGroups = {};
+        // 3. 合并并排序 (时间倒序)
+        let allItems = [...processedWeibo, ...otherItems];
+        allItems.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-        Object.keys(groups).forEach(source => {
-            let items = groups[source];
-
-            // 特殊处理微博: 跳过前3条 (Rank 1-3)
-            if (source === '微博热搜' && items.length > 3) {
-                items = items.slice(3);
-            }
-
-            processedGroups[source] = {
-                displayed: items.slice(0, DISPLAY_PER_SOURCE),
-                reserve: items.slice(DISPLAY_PER_SOURCE, DISPLAY_PER_SOURCE + RESERVE_PER_SOURCE)
-            };
-        });
-
-        setNewsBySource(processedGroups);
+        // 4. 切分显示和备用
+        setDisplayedNews(allItems.slice(0, INITIAL_DISPLAY_COUNT));
+        setReservePool(allItems.slice(INITIAL_DISPLAY_COUNT));
     };
 
-    const handleDeleteCard = (cardId, source) => {
+    const handleDeleteCard = (cardId) => {
         const newDeletedIds = [...deletedIds, cardId];
         setDeletedIds(newDeletedIds);
         localStorage.setItem('deletedNewsIds', JSON.stringify(newDeletedIds));
 
-        setNewsBySource(prev => {
-            const sourceGroup = prev[source];
-            if (!sourceGroup) return prev; // Should not happen
+        setDisplayedNews(prev => {
+            const filtered = prev.filter(item => item.id !== cardId);
 
-            // Remove from displayed
-            const newDisplayed = sourceGroup.displayed.filter(item => item.id !== cardId);
-            let newReserve = [...sourceGroup.reserve];
-
-            // Refill from reserve if available
-            if (newReserve.length > 0) {
-                const nextItem = newReserve.shift(); // Take first from reserve
-                newDisplayed.push(nextItem);
+            // 从备用池补充一条
+            if (reservePool.length > 0) {
+                const nextItem = reservePool[0];
+                setReservePool(pool => pool.slice(1));
+                return [...filtered, nextItem];
             }
 
-            return {
-                ...prev,
-                [source]: {
-                    displayed: newDisplayed,
-                    reserve: newReserve
-                }
-            };
+            return filtered;
         });
     };
 
@@ -164,21 +145,6 @@ export default function NewsFeed() {
         window.pullStartY = null;
     };
 
-    // Priority order for sources
-    const SOURCE_ORDER = ['微博热搜', 'X (Twitter)', 'YouTube'];
-
-    // Sort sources: defined ones first, then others alphabetically
-    const sortedSources = Object.keys(newsBySource).sort((a, b) => {
-        const indexA = SOURCE_ORDER.indexOf(a);
-        const indexB = SOURCE_ORDER.indexOf(b);
-
-        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-        if (indexA !== -1) return -1;
-        if (indexB !== -1) return 1;
-
-        return a.localeCompare(b);
-    });
-
     return (
         <div
             className={styles.feedContainer}
@@ -192,50 +158,31 @@ export default function NewsFeed() {
                 </div>
             )}
 
-            {loading && Object.keys(newsBySource).length === 0 ? (
-                <div className={styles.grid}>
-                    {[...Array(6)].map((_, i) => (
+            <div className={styles.grid}>
+                {loading && displayedNews.length === 0 ? (
+                    [...Array(6)].map((_, i) => (
                         <div key={i} className={styles.skeletonCard}></div>
-                    ))}
-                </div>
-            ) : (
-                <div className={styles.groupedFeed}>
-                    {sortedSources.map(source => {
-                        const group = newsBySource[source];
-                        if (!group || group.displayed.length === 0) return null;
+                    ))
+                ) : (
+                    displayedNews.map((item) => (
+                        <NewsCard
+                            key={item.id}
+                            item={item}
+                            onDelete={() => handleDeleteCard(item.id)}
+                        />
+                    ))
+                )}
 
-                        return (
-                            <div key={source} className={styles.sourceSection} style={{ marginBottom: '2rem' }}>
-                                <h2 style={{
-                                    padding: '0 1rem 1rem',
-                                    margin: '0 0 1rem 0',
-                                    fontSize: '1.2rem',
-                                    fontWeight: '600',
-                                    color: 'var(--foreground)',
-                                    borderLeft: '4px solid #3b82f6',
-                                    marginLeft: '1rem',
-                                    lineHeight: '1.2'
-                                }}>
-                                    {source}
-                                </h2>
-                                <div className={styles.grid}>
-                                    {group.displayed.map((item) => (
-                                        <NewsCard
-                                            key={item.id}
-                                            item={item}
-                                            onDelete={() => handleDeleteCard(item.id, source)}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
+                {!loading && displayedNews.length === 0 && (
+                    <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                        暂无数据
+                    </div>
+                )}
+            </div>
 
             <footer className={styles.footer}>
                 <div className={styles.footerContent}>
-                    <span>v0.12.0</span>
+                    <span>v0.14.0</span>
                     <span>•</span>
                     <span>下拉刷新</span>
                     <span>•</span>
