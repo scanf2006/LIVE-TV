@@ -87,9 +87,20 @@ export default function NewsCard({ item, onDelete }) {
 
                     {/* 元信息 */}
                     <div className={styles.meta}>
-                        <span className={styles.source}>{item?.source || '未知来源'}</span>
+                        <span className={`
+                            ${styles.sourceTag} 
+                            ${item?.source?.includes('微博') ? styles.source_weibo :
+                                item?.source?.includes('Twitter') || item?.source?.includes('X') ? styles.source_twitter :
+                                    item?.source?.toLowerCase().includes('reddit') ? styles.source_reddit :
+                                        item?.source?.toLowerCase().includes('youtube') ? styles.source_youtube :
+                                            styles.source_rss}
+                        `}>
+                            {item?.source || '未知来源'}
+                        </span>
                         {item?.views && (
-                            <span className={styles.views}>👁 {item.views}</span>
+                            <span className={styles.views}>
+                                <span>👁</span> {item.views}
+                            </span>
                         )}
                     </div>
                 </div>

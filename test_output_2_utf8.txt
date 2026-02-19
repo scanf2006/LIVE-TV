@@ -1,0 +1,29 @@
+﻿node : (node:93736) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/AI/global-news-pwa/test_weibo_integration.js is not specified and it doesn't parse as CommonJS.
+所在位置 行:1 字符: 1
++ node test_weibo_integration.js > test_output_2.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:93736) [M...se as CommonJS.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to D:\AI\global-news-pwa\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Testing WeiboAdapter with integrated cookie generator...
+--- WeiboAdapter.fetchHotSearch START ---
+Trying Weibo source: weibo-direct (https://weibo.com/ajax/side/hotSearch)
+[WeiboCookie] Starting guest cookie generation...
+[WeiboCookie] Successfully generated SUB cookie.
+[WeiboAdapter] Using generated cookie for source: weibo-direct
+Weibo weibo-direct success: 10 items
+SUCCESS: Fetched 10 hot search items.
+First item: {
+  id: 'weibo-direct-0-1771368509055',
+  title: 'B绔欐槬鏅?澶?,
+  url: 'https://s.weibo.com/weibo?q=B%E7%AB%99%E6%98%A5%E6%99%9A%20%E5%A4%AF',
+  source: '寰崥鐑悳',
+  rank: 1,
+  views: 506671,
+  titleOriginal: 'B绔欐槬鏅?澶?,
+  timestamp: '2026-02-17T22:48:29.055Z'
+}
+Data seems to be from official source (views is number).
