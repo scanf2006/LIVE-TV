@@ -210,7 +210,7 @@ export default function NewsFeed() {
 
             <footer className={styles.footer}>
                 <div className={styles.footerContent}>
-                    <span>v0.15.1</span>
+                    <span>v0.9.2</span>
                     <span>•</span>
                     <span>下拉刷新</span>
                     <span>•</span>
