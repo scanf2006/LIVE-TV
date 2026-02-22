@@ -37,6 +37,22 @@ export const IPTVAdapter = {
                         // 覆盖绝大部分优质美区综合频道与体娱台
                         return n.includes('cnn') || n.includes('fox') || n.includes('nbc') || n.includes('abc') || n.includes('cbs') || n.includes('espn') || n.includes('usa') || n.includes('hbo') || n.includes('tnt') || n.includes('tbs') || n.includes('amc') || n.includes('discovery') || n.includes('history') || n.includes('mtv') || n.includes('comedy central') || n.includes('bloomberg') || n.includes('cnbc') || n.includes('msnbc');
                     }).slice(0, 45);
+
+                    // 顶级频道权重排序，优先保证用户要求的大台排在最前端
+                    const topTier = ['hbo', 'history', 'discovery', 'cnn', 'fox', 'nbc', 'abc', 'cbs', 'espn', 'tnt', 'amc'];
+                    premiumUS.sort((a, b) => {
+                        const nameA = (a.name || '').toLowerCase();
+                        const nameB = (b.name || '').toLowerCase();
+
+                        const scoreA = topTier.findIndex(kw => nameA.includes(kw));
+                        const scoreB = topTier.findIndex(kw => nameB.includes(kw));
+
+                        const weightA = scoreA === -1 ? 999 : scoreA;
+                        const weightB = scoreB === -1 ? 999 : scoreB;
+
+                        return weightA - weightB;
+                    });
+
                     premiumUS.forEach(c => c.category = "USA Streams");
                     // 使用 unshift 插入到数组最前面，防止被验证阶段的 60 个上限截断截掉末尾
                     allFetchedChannels.unshift(...premiumUS);
