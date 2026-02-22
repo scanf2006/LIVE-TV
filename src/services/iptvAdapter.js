@@ -31,11 +31,12 @@ export const IPTVAdapter = {
                 const channels = this.parseM3U(m3uText);
 
                 if (url.includes('us.m3u')) {
-                    // Extract ~15 high quality American channels matching big networks
+                    // Extract ~45 high quality American channels matching big networks
                     const premiumUS = channels.filter(c => {
                         const n = (c.name || '').toLowerCase();
-                        return n.includes('cnn') || n.includes('fox') || n.includes('nbc') || n.includes('abc') || n.includes('cbs') || n.includes('espn') || n.includes('usa');
-                    }).slice(0, 15);
+                        // 覆盖绝大部分优质美区综合频道与体娱台
+                        return n.includes('cnn') || n.includes('fox') || n.includes('nbc') || n.includes('abc') || n.includes('cbs') || n.includes('espn') || n.includes('usa') || n.includes('hbo') || n.includes('tnt') || n.includes('tbs') || n.includes('amc') || n.includes('discovery') || n.includes('history') || n.includes('mtv') || n.includes('comedy central') || n.includes('bloomberg') || n.includes('cnbc') || n.includes('msnbc');
+                    }).slice(0, 45);
                     premiumUS.forEach(c => c.category = "USA Streams");
                     // 使用 unshift 插入到数组最前面，防止被验证阶段的 60 个上限截断截掉末尾
                     allFetchedChannels.unshift(...premiumUS);
@@ -62,40 +63,24 @@ export const IPTVAdapter = {
 
         console.log(`[IPTV] Aggregation complete. Total unique channels before filtering: ${uniqueChannels.length}`);
 
-        // 黑名单，拦截用户不要的频道
-        const blacklist = [
-            "3ABN Canada",
-            "5AAB TV",
-            "A&E East",
-            "Amazing Discoveries TV",
-            "Az Star TV"
-        ].map(n => n.toLowerCase());
-
-        // 深度过滤：排除法语频道 + 排除 720p 以下 (通过名称或标签判断)
+        // 极简过滤：加拿大仅保留特供白名单，其余全给美国频道
         const highQualityEnglishChannels = uniqueChannels.filter(ch => {
             const name = (ch.name || "").toLowerCase();
-            const lang = (ch.language || "").toLowerCase();
             const category = (ch.category || "").toLowerCase();
 
-            // 0. 特别指定的黑名单过滤
-            if (blacklist.some(b => name.includes(b))) {
-                return false;
+            // 1. 如果是提取到的精华美国频道，直接放行
+            if (category.includes('usa streams')) {
+                return true;
             }
 
-            // 1. 语言过滤 (排除法语相关)
-            const isFrench = lang.includes("french") || lang.includes("fra") ||
-                category.includes("french") || category.includes("français") ||
-                name.includes("(fr)") || name.includes(" français");
-            if (isFrench) return false;
-
-            // 2. 分辨率过滤 (彻底屏蔽明确标注为低画质的频道)
-            const lowResKeywords = ["360p", "480p", "240p", " sd", "(sd)", "low quality", "lq"];
-            if (lowResKeywords.some(kw => name.includes(kw) || category.includes(kw))) {
-                return false;
+            // 2. 针对加拿大频道实施严格白名单
+            const isTargetCanadian = name.includes('cbc toronto') || name.includes('citynews toronto');
+            if (isTargetCanadian) {
+                return true;
             }
 
-            // 策略：如果名称中明确标注了 HD/1080/720/FHD/4K，即使没有排除项也优先保留
-            return true;
+            // 3. 其它一概不要
+            return false;
         });
 
         console.log(`[IPTV] Final filtered channels: ${highQualityEnglishChannels.length}`);
