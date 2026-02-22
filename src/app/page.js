@@ -5,7 +5,6 @@ import IPTVPlayer from '@/components/IPTVPlayer';
 import ChannelGrid from '@/components/ChannelGrid';
 import styles from '@/components/IPTV.module.css';
 
-import SpatialNavigation from 'spatial-navigation-js';
 
 export default function Home() {
   const [channels, setChannels] = useState([]);
@@ -59,19 +58,25 @@ export default function Home() {
 
   // 遥控器空间导航 (Spatial Navigation) 支持
   useEffect(() => {
-    SpatialNavigation.init();
-    SpatialNavigation.add({
-      selector: `.${styles.tab}, .${styles.card}`
-    });
-    SpatialNavigation.makeFocusable();
+    let SpatialNavigation;
+    let focusTimer;
 
-    // 尝试默认聚焦第一个元素
-    const focusTimer = setTimeout(() => {
-      const firstFocusable = document.querySelector(`.${styles.tab}, .${styles.card}`);
-      if (firstFocusable && document.activeElement === document.body) {
-        firstFocusable.focus();
-      }
-    }, 500);
+    import('spatial-navigation-js').then((mod) => {
+      SpatialNavigation = mod.default || mod;
+      SpatialNavigation.init();
+      SpatialNavigation.add({
+        selector: `.${styles.tab}, .${styles.card}`
+      });
+      SpatialNavigation.makeFocusable();
+
+      // 尝试默认聚焦第一个元素
+      focusTimer = setTimeout(() => {
+        const firstFocusable = document.querySelector(`.${styles.tab}, .${styles.card}`);
+        if (firstFocusable && document.activeElement === document.body) {
+          firstFocusable.focus();
+        }
+      }, 500);
+    }).catch(err => console.error("Failed to load SpatialNavigation:", err));
 
     const handleKeyDown = (e) => {
       const key = e.key;
@@ -91,7 +96,9 @@ export default function Home() {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      SpatialNavigation.uninit();
+      if (SpatialNavigation) {
+        SpatialNavigation.uninit();
+      }
       clearTimeout(focusTimer);
     };
   }, [channels, categories, currentCategory]);
