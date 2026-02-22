@@ -5,6 +5,8 @@ import IPTVPlayer from '@/components/IPTVPlayer';
 import ChannelGrid from '@/components/ChannelGrid';
 import styles from '@/components/IPTV.module.css';
 
+import SpatialNavigation from 'spatial-navigation-js';
+
 export default function Home() {
   const [channels, setChannels] = useState([]);
   const [filteredChannels, setFilteredChannels] = useState([]);
@@ -55,33 +57,44 @@ export default function Home() {
     }
   }, [currentCategory, channels]);
 
-  // 遥控器基本焦点支持 (D-pad)
+  // 遥控器空间导航 (Spatial Navigation) 支持
   useEffect(() => {
+    SpatialNavigation.init();
+    SpatialNavigation.add({
+      selector: `.${styles.tab}, .${styles.card}`
+    });
+    SpatialNavigation.makeFocusable();
+
+    // 尝试默认聚焦第一个元素
+    const focusTimer = setTimeout(() => {
+      const firstFocusable = document.querySelector(`.${styles.tab}, .${styles.card}`);
+      if (firstFocusable && document.activeElement === document.body) {
+        firstFocusable.focus();
+      }
+    }, 500);
+
     const handleKeyDown = (e) => {
       const key = e.key;
-      const activeElement = document.activeElement;
-
-      if (!activeElement || activeElement === document.body) {
-        const firstFocusable = document.querySelector(`.${styles.tab}, .${styles.card}`);
-        if (firstFocusable) firstFocusable.focus();
-        return;
-      }
-
+      // 保留 F 键全屏功能
       if (key === 'f' || key === 'F' || key === 'MediaPlayPause') {
         const video = document.querySelector('video');
         if (video) {
           if (document.fullscreenElement) {
             document.exitFullscreen();
           } else {
-            video.requestFullscreen().catch(e => console.error(e));
+            video.requestFullscreen().catch(err => console.error(err));
           }
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [channels]);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      SpatialNavigation.uninit();
+      clearTimeout(focusTimer);
+    };
+  }, [channels, categories, currentCategory]);
 
   return (
     <main className={`${styles.container} ${styles.fadeIn}`}>
