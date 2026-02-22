@@ -56,30 +56,19 @@ export default function Home() {
     }
   }, [currentCategory, channels]);
 
-  // 遥控器空间导航 (Spatial Navigation) 支持
+  // 遥控器原生空间导航 (替代第三方包避免 SSR 报错)
   useEffect(() => {
-    let SpatialNavigation;
-    let focusTimer;
-
-    import('spatial-navigation-js').then((mod) => {
-      SpatialNavigation = mod.default || mod;
-      SpatialNavigation.init();
-      SpatialNavigation.add({
-        selector: `.${styles.tab}, .${styles.card}`
-      });
-      SpatialNavigation.makeFocusable();
-
-      // 尝试默认聚焦第一个元素
-      focusTimer = setTimeout(() => {
-        const firstFocusable = document.querySelector(`.${styles.tab}, .${styles.card}`);
-        if (firstFocusable && document.activeElement === document.body) {
-          firstFocusable.focus();
-        }
-      }, 500);
-    }).catch(err => console.error("Failed to load SpatialNavigation:", err));
+    // 尝试默认聚焦第一个元素
+    const focusTimer = setTimeout(() => {
+      const firstFocusable = document.querySelector(`.${styles.tab}, .${styles.card}`);
+      if (firstFocusable && (!document.activeElement || document.activeElement === document.body)) {
+        firstFocusable.focus();
+      }
+    }, 500);
 
     const handleKeyDown = (e) => {
       const key = e.key;
+
       // 保留 F 键全屏功能
       if (key === 'f' || key === 'F' || key === 'MediaPlayPause') {
         const video = document.querySelector('video');
@@ -90,15 +79,61 @@ export default function Home() {
             video.requestFullscreen().catch(err => console.error(err));
           }
         }
+        return;
+      }
+
+      // 方向键导航
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+        e.preventDefault();
+        const focusables = Array.from(document.querySelectorAll(`.${styles.tab}, .${styles.card}`));
+        const current = document.activeElement;
+
+        if (!focusables.includes(current)) {
+          if (focusables.length) focusables[0].focus();
+          return;
+        }
+
+        const currentRect = current.getBoundingClientRect();
+        let bestCandidate = null;
+        let minDistance = Infinity;
+
+        focusables.forEach(node => {
+          if (node === current) return;
+          const rect = node.getBoundingClientRect();
+          let isEligible = false;
+          let distance = 0;
+
+          // 简易包围盒碰撞和距离平方计算 (找出最近的节点)
+          if (key === 'ArrowRight' && rect.left >= currentRect.right - 10) {
+            isEligible = true;
+            distance = Math.pow(rect.left - currentRect.right, 2) + Math.pow(rect.top - currentRect.top, 2) * 2;
+          } else if (key === 'ArrowLeft' && rect.right <= currentRect.left + 10) {
+            isEligible = true;
+            distance = Math.pow(currentRect.left - rect.right, 2) + Math.pow(rect.top - currentRect.top, 2) * 2;
+          } else if (key === 'ArrowDown' && rect.top >= currentRect.bottom - 10) {
+            isEligible = true;
+            distance = Math.pow(rect.top - currentRect.bottom, 2) + Math.pow(rect.left - currentRect.left, 2) * 2;
+          } else if (key === 'ArrowUp' && rect.bottom <= currentRect.top + 10) {
+            isEligible = true;
+            distance = Math.pow(currentRect.top - rect.bottom, 2) + Math.pow(rect.left - currentRect.left, 2) * 2;
+          }
+
+          if (isEligible && distance < minDistance) {
+            minDistance = distance;
+            bestCandidate = node;
+          }
+        });
+
+        if (bestCandidate) {
+          bestCandidate.focus();
+          bestCandidate.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      if (SpatialNavigation) {
-        SpatialNavigation.uninit();
-      }
       clearTimeout(focusTimer);
     };
   }, [channels, categories, currentCategory]);
