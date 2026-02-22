@@ -10,7 +10,8 @@ const M3U_SOURCES = [
     "https://raw.githubusercontent.com/ktpm489/IPTV-2/master/North_America/Canada.m3u8",
     "https://www.apsattv.com/distro.m3u",
     "https://gist.githubusercontent.com/francoisjacques/0ca384a294b9078e58b29c65fda730a9/raw/IPTV%20big%20list.m3u",
-    "https://raw.githubusercontent.com/tretv247h/IPTV_List/master/Canada.m3u8.txt"
+    "https://raw.githubusercontent.com/tretv247h/IPTV_List/master/Canada.m3u8.txt",
+    "https://iptv-org.github.io/iptv/countries/us.m3u"
 ];
 
 export const IPTVAdapter = {
@@ -28,8 +29,20 @@ export const IPTVAdapter = {
 
                 const m3uText = await response.text();
                 const channels = this.parseM3U(m3uText);
-                allFetchedChannels.push(...channels);
-                console.log(`[IPTV] Fetched ${channels.length} channels from: ${url}`);
+
+                if (url.includes('us.m3u')) {
+                    // Extract ~15 high quality American channels matching big networks
+                    const premiumUS = channels.filter(c => {
+                        const n = (c.name || '').toLowerCase();
+                        return n.includes('cnn') || n.includes('fox') || n.includes('nbc') || n.includes('abc') || n.includes('cbs') || n.includes('espn') || n.includes('usa');
+                    }).slice(0, 15);
+                    premiumUS.forEach(c => c.category = "USA Streams");
+                    allFetchedChannels.push(...premiumUS);
+                    console.log(`[IPTV] Added ${premiumUS.length} US Channels from: ${url}`);
+                } else {
+                    allFetchedChannels.push(...channels);
+                    console.log(`[IPTV] Fetched ${channels.length} channels from: ${url}`);
+                }
             } catch (error) {
                 console.error(`[IPTV] Failed to fetch source ${url}:`, error.message);
             }

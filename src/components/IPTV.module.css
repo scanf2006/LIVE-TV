@@ -153,14 +153,14 @@
     z-index: 10;
 }
 
-/* TV端专属的强对比焦点反馈 */
+/* TV端专属的强对比焦点反馈：频道选台 (青色荧光强调) */
 .card:focus {
-    background: var(--tv-glass);
-    border-color: #fff;
-    transform: scale(1.12);
-    box-shadow: 0 0 60px var(--tv-glow);
-    z-index: 20;
-    outline: 5px solid var(--tv-primary);
+    background: #000;
+    border-color: #00E5FF;
+    transform: scale(1.18) translateY(-10px);
+    box-shadow: 0 25px 60px rgba(0, 229, 255, 0.4);
+    z-index: 30;
+    outline: 6px solid #00E5FF;
     outline-offset: 4px;
 }
 
@@ -292,12 +292,14 @@
     box-shadow: 0 5px 25px var(--tv-glow);
 }
 
+/* TV端专属的强对比焦点反馈：顶部分类 (亮黄高对比) */
 .tab:focus {
-    background: var(--tv-primary);
+    background: #FFD600 !important;
     border-color: #fff !important;
-    color: #fff;
-    transform: scale(1.1);
-    box-shadow: 0 5px 30px var(--tv-glow);
-    outline: 4px solid #fff;
-    outline-offset: 4px;
+    color: #000 !important;
+    transform: scale(1.15) translateY(-5px);
+    box-shadow: 0 15px 40px rgba(255, 214, 0, 0.6);
+    outline: 6px solid #fff;
+    outline-offset: 5px;
+    z-index: 30;
 }
