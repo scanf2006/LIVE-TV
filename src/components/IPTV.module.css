@@ -145,12 +145,23 @@
     outline: none;
 }
 
-.card:focus {
-    background: var(--tv-primary);
+.activeCard {
+    background: var(--tv-glass);
     border-color: #fff;
     transform: scale(1.1);
     box-shadow: 0 0 40px var(--tv-glow);
     z-index: 10;
+}
+
+/* TV端专属的强对比焦点反馈 */
+.card:focus {
+    background: var(--tv-glass);
+    border-color: #fff;
+    transform: scale(1.12);
+    box-shadow: 0 0 60px var(--tv-glow);
+    z-index: 20;
+    outline: 5px solid var(--tv-primary);
+    outline-offset: 4px;
 }
 
 .cardLogo {
@@ -273,11 +284,20 @@
     border: 1px solid transparent;
 }
 
-.tab:focus,
 .tabActive {
     background: var(--tv-primary);
     border-color: #fff !important;
     color: #fff;
     transform: scale(1.08);
     box-shadow: 0 5px 25px var(--tv-glow);
+}
+
+.tab:focus {
+    background: var(--tv-primary);
+    border-color: #fff !important;
+    color: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 5px 30px var(--tv-glow);
+    outline: 4px solid #fff;
+    outline-offset: 4px;
 }

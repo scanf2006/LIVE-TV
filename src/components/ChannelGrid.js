@@ -14,9 +14,23 @@ const ChannelGrid = ({ channels, onSelect, currentId }) => {
                     <div
                         key={channel.id}
                         className={`${styles.card} ${currentId === channel.id ? styles.activeCard : ''}`}
-                        onClick={() => onSelect(channel)}
+                        onClick={() => {
+                            onSelect(channel);
+                            const video = document.querySelector('video');
+                            if (video) {
+                                const reqFS = video.requestFullscreen || video.webkitRequestFullscreen || video.mozRequestFullScreen || video.msRequestFullscreen;
+                                if (reqFS) reqFS.call(video).catch(err => console.log(err));
+                            }
+                        }}
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter') onSelect(channel);
+                            if (e.key === 'Enter') {
+                                onSelect(channel);
+                                const video = document.querySelector('video');
+                                if (video) {
+                                    const reqFS = video.requestFullscreen || video.webkitRequestFullscreen || video.mozRequestFullScreen || video.msRequestFullscreen;
+                                    if (reqFS) reqFS.call(video).catch(err => console.log(err));
+                                }
+                            }
                         }}
                         tabIndex="0"
                         role="button"
