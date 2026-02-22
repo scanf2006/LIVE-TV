@@ -37,7 +37,8 @@ export const IPTVAdapter = {
                         return n.includes('cnn') || n.includes('fox') || n.includes('nbc') || n.includes('abc') || n.includes('cbs') || n.includes('espn') || n.includes('usa');
                     }).slice(0, 15);
                     premiumUS.forEach(c => c.category = "USA Streams");
-                    allFetchedChannels.push(...premiumUS);
+                    // 使用 unshift 插入到数组最前面，防止被验证阶段的 60 个上限截断截掉末尾
+                    allFetchedChannels.unshift(...premiumUS);
                     console.log(`[IPTV] Added ${premiumUS.length} US Channels from: ${url}`);
                 } else {
                     allFetchedChannels.push(...channels);
