@@ -37,8 +37,16 @@ export const IPTVAdapter = {
                     // Extract ~45 high quality American channels matching big networks
                     const premiumUS = channels.filter(c => {
                         const n = (c.name || '').toLowerCase();
-                        // 覆盖绝大部分优质美区综合频道与体娱台
-                        return n.includes('cnn') || n.includes('fox') || n.includes('nbc') || n.includes('abc') || n.includes('cbs') || n.includes('espn') || n.includes('usa') || n.includes('hbo') || n.includes('tnt') || n.includes('tbs') || n.includes('amc') || n.includes('discovery') || n.includes('history') || n.includes('mtv') || n.includes('comedy central') || n.includes('bloomberg') || n.includes('cnbc') || n.includes('msnbc');
+
+                        // 1. 强力黑名单清洗：过滤用户不再需要的新闻/分支频道
+                        if (n.includes('cbs news')) return false;
+                        if (n.includes('bloomberg')) return false;
+                        if (n.includes('abc 5 boston')) return false;
+                        if (n.includes('abc news live')) return false;
+                        if (n.includes('cnbc') && !n.includes('msnbc')) return false;
+
+                        // 2. 覆盖绝大部分优质美区综合频道与体娱台
+                        return n.includes('cnn') || n.includes('fox') || n.includes('nbc') || n.includes('abc') || n.includes('cbs') || n.includes('espn') || n.includes('usa') || n.includes('hbo') || n.includes('tnt') || n.includes('tbs') || n.includes('amc') || n.includes('discovery') || n.includes('history') || n.includes('mtv') || n.includes('comedy central') || n.includes('msnbc');
                     }).slice(0, 45);
 
                     // 顶级频道权重排序，优先保证用户要求的大台排在最前端
