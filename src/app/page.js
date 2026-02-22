@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import IPTVPlayer from '@/components/IPTVPlayer';
 import ChannelGrid from '@/components/ChannelGrid';
 import styles from '@/components/IPTV.module.css';
@@ -14,6 +14,17 @@ export default function Home() {
   const [currentChannel, setCurrentChannel] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const currentChannelRef = useRef(null);
+  const filteredChannelsRef = useRef([]);
+
+  useEffect(() => {
+    currentChannelRef.current = currentChannel;
+  }, [currentChannel]);
+
+  useEffect(() => {
+    filteredChannelsRef.current = filteredChannels;
+  }, [filteredChannels]);
 
   useEffect(() => {
     const loadChannels = async () => {
@@ -79,6 +90,31 @@ export default function Home() {
             video.requestFullscreen().catch(err => console.error(err));
           }
         }
+        return;
+      }
+
+      // 沉浸式全屏状态下：按上下键无缝切台
+      if (document.fullscreenElement) {
+        if (key === 'ArrowUp' || key === 'ArrowDown') {
+          e.preventDefault();
+          const channel = currentChannelRef.current;
+          const list = filteredChannelsRef.current;
+
+          if (!channel || list.length === 0) return;
+
+          const currentIndex = list.findIndex(c => c.id === channel.id);
+          if (currentIndex === -1) return;
+
+          let nextIndex = currentIndex;
+          if (key === 'ArrowDown') { // 下一台
+            nextIndex = (currentIndex + 1) % list.length;
+          } else { // 上一台
+            nextIndex = (currentIndex - 1 + list.length) % list.length;
+          }
+
+          setCurrentChannel(list[nextIndex]);
+        }
+        // 全屏状态下限制焦点乱跑，不再处理常规网格导航
         return;
       }
 
