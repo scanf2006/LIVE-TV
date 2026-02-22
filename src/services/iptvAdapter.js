@@ -48,11 +48,25 @@ export const IPTVAdapter = {
 
         console.log(`[IPTV] Aggregation complete. Total unique channels before filtering: ${uniqueChannels.length}`);
 
+        // 黑名单，拦截用户不要的频道
+        const blacklist = [
+            "3ABN Canada",
+            "5AAB TV",
+            "A&E East",
+            "Amazing Discoveries TV",
+            "Az Star TV"
+        ].map(n => n.toLowerCase());
+
         // 深度过滤：排除法语频道 + 排除 720p 以下 (通过名称或标签判断)
         const highQualityEnglishChannels = uniqueChannels.filter(ch => {
             const name = (ch.name || "").toLowerCase();
             const lang = (ch.language || "").toLowerCase();
             const category = (ch.category || "").toLowerCase();
+
+            // 0. 特别指定的黑名单过滤
+            if (blacklist.some(b => name.includes(b))) {
+                return false;
+            }
 
             // 1. 语言过滤 (排除法语相关)
             const isFrench = lang.includes("french") || lang.includes("fra") ||
