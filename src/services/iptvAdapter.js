@@ -11,7 +11,9 @@ const M3U_SOURCES = [
     "https://www.apsattv.com/distro.m3u",
     "https://gist.githubusercontent.com/francoisjacques/0ca384a294b9078e58b29c65fda730a9/raw/IPTV%20big%20list.m3u",
     "https://raw.githubusercontent.com/tretv247h/IPTV_List/master/Canada.m3u8.txt",
-    "https://iptv-org.github.io/iptv/countries/us.m3u"
+    "https://iptv-org.github.io/iptv/countries/us.m3u",
+    "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_usa.m3u8",
+    "https://raw.githubusercontent.com/tretv247h/IPTV_List/master/USA.m3u8.txt"
 ];
 
 export const IPTVAdapter = {
@@ -30,7 +32,8 @@ export const IPTVAdapter = {
                 const m3uText = await response.text();
                 const channels = this.parseM3U(m3uText);
 
-                if (url.includes('us.m3u')) {
+                const isUSSource = url.includes('us.m3u') || url.toLowerCase().includes('usa.m3u');
+                if (isUSSource) {
                     // Extract ~45 high quality American channels matching big networks
                     const premiumUS = channels.filter(c => {
                         const n = (c.name || '').toLowerCase();
