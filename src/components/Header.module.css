@@ -25,7 +25,6 @@
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
 
     padding: 1rem 1.5rem;
-    text-align: center;
     pointer-events: auto;
     box-sizing: border-box;
     transition: all var(--transition-normal);
@@ -58,4 +57,27 @@
     z-index: 1;
     letter-spacing: 0.05em;
     text-transform: uppercase;
+}
+
+.iptvButton {
+    background: var(--primary);
+    color: white;
+    padding: 0.8rem 1.2rem;
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all var(--transition-normal);
+    box-shadow: 0 4px 20px var(--primary-glow);
+    white-space: nowrap;
+    pointer-events: auto;
+}
+
+.iptvButton:hover {
+    background: var(--accent);
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px var(--accent-glow);
 }

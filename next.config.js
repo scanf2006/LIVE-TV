@@ -14,9 +14,6 @@ const nextConfig = {
     // 生产环境优化
     productionBrowserSourceMaps: false,
 
-    // 使用SWC压缩(更快)
-    swcMinify: true,
-
     // 实验性功能
     experimental: {
         // 优化CSS
@@ -24,6 +21,9 @@ const nextConfig = {
         // 优化包导入
         optimizePackageImports: ['@/components', '@/lib', '@/services']
     },
+
+    // 兼容 Turbopack
+    turbopack: {},
 
     // 性能优化
     poweredByHeader: false,
@@ -57,18 +57,15 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 });
 
 // Sentry配置
-const { withSentryConfig } = require("@sentry/nextjs");
+// const { withSentryConfig } = require("@sentry/nextjs");
 
-const sentryWebpackPluginOptions = {
+/* const sentryWebpackPluginOptions = {
     // 静默上传Source Maps
     silent: true,
     // 组织和项目
     org: "scanf2006",
     project: "global-news-pwa",
-};
+}; */
 
-// 导出配置(先PWA,再Sentry)
-module.exports = withSentryConfig(
-    withPWA(nextConfig),
-    sentryWebpackPluginOptions
-);
+// 导出配置(目前仅PWA)
+module.exports = withPWA(nextConfig);

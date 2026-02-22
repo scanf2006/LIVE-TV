@@ -1,23 +1,12 @@
 {
-  "name": "Global News PWA",
-  "short_name": "NewsGlobal",
-  "description": "Real-time global news aggregator with translation.",
+  "name": "Live Canada IPTV",
+  "short_name": "CanadaTV",
+  "description": "Premium Canada Live IPTV Streams. Optimized for Fire TV.",
   "start_url": "/",
-  "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#121212",
+  "display": "fullscreen",
+  "background_color": "#050510",
+  "theme_color": "#3b82f6",
   "icons": [
-    {
-      "src": "/icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
-    },
-    {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
