@@ -26,7 +26,9 @@ const CONTENT_MAPPING = {
     'Music': ['music', 'mtv', 'v2beat', 'stingray', 'concert']
 };
 
-const FOREIGN_KEYWORDS = ['pashto', 'persian', 'iran', 'farsi', 'arabic', 'urdu', 'bengali', 'tamil', 'punjabi', 'turkish', 'hindi', 'afghan'];
+// 深度语种黑名单：关键字 + TLD 域名 + 元数据后缀
+const FOREIGN_KEYWORDS = ['pashto', 'persian', 'iran', 'farsi', 'arabic', 'urdu', 'bengali', 'tamil', 'punjabi', 'turkish', 'hindi', 'afghan', 'espanol', 'spanish', 'norsk', 'polonia'];
+const FOREIGN_TLDS = ['.ir', '.pk', '.af', '.tr', '.sa', '.ae', '.eg', '.in', '.ru', '.vn', '.cn', '.pk', '.bd', '.il', '.br', '.it', '.de', '.fr', '.es'];
 
 export const IPTVAdapter = {
     /**
@@ -50,18 +52,13 @@ export const IPTVAdapter = {
         // 2. 核心品牌后缀剥离 (针对 ABC 7, NBC 4, FOX 5 等地区台)
         const brands = ['abc', 'nbc', 'cbs', 'fox', 'pbs', 'bbc', 'cbc', 'itv', 'sky', 'cnn', 'hsn', 'qvc', 'global', 'ctv', 'citynews'];
         for (const b of brands) {
-            // 匹配 "品牌名 + 空格 + (数字/地区/后缀)"
             const brandRegex = new RegExp(`^${b}(\\s+\\d+|\\s+[a-z]+|\\s*-\\s*[a-z]+)`, 'i');
             if (brandRegex.test(name)) {
-                // BBC 序列台处理
                 if (b === 'bbc') {
                     const bbcSeq = name.match(/^bbc\s+(one|two|three|four|news|hd|alba|parliament)/i);
                     if (bbcSeq) return bbcSeq[0].toUpperCase();
                 }
-                // CBC 网络处理
                 if (b === 'cbc' && lower.includes('network')) return "CBC News Network";
-
-                // 默认强制聚合为大写品牌名
                 return b.toUpperCase();
             }
         }
@@ -70,14 +67,50 @@ export const IPTVAdapter = {
     },
 
     /**
+     * 启发式探测：通过台标、元数据判断语种
+     */
+    isForeignHeuristic(name, logo, tvgId, originalCategory) {
+        const n = (name || "").toLowerCase();
+        const l = (logo || "").toLowerCase();
+        const t = (tvgId || "").toLowerCase();
+        const c = (originalCategory || "").toLowerCase();
+
+        // 1. 关键字穿透 (所有元数据)
+        if (FOREIGN_KEYWORDS.some(kw => n.includes(kw) || l.includes(kw) || t.includes(kw) || c.includes(kw))) {
+            return true;
+        }
+
+        // 2. 通过 Logo 域名后缀判断
+        try {
+            if (l.startsWith('http')) {
+                const url = new URL(l);
+                const hostname = url.hostname;
+                if (FOREIGN_TLDS.some(tld => hostname.endsWith(tld))) {
+                    return true;
+                }
+            }
+        } catch (e) { }
+
+        // 3. 通过 tvg-id 国家后缀判断 (例如 Channel.ar@es)
+        // 排除 .uk, .us, .ca, .com, .org 等合法后缀
+        const foreignIdRegex = /\.@(?!us|uk|ca|en|com|org|net|edu|int)[a-z]{2,3}$/;
+        if (foreignIdRegex.test(t)) return true;
+
+        // 特殊：针对某些特定地区分流
+        if (t.includes('.ir@') || t.includes('.pk@') || t.includes('.tr@')) return true;
+
+        return false;
+    },
+
+    /**
      * 根据名称识别内容分类
      */
-    getCategoryByContent(name, originalCategory) {
+    getCategoryByContent(name, originalCategory, logo, tvgId) {
         const n = (name || "").toLowerCase();
         const oc = (originalCategory || "").toLowerCase();
 
-        // 优先过滤外语
-        if (FOREIGN_KEYWORDS.some(kw => n.includes(kw) || oc.includes(kw))) {
+        // 优先进行语种启发式判定
+        if (this.isForeignHeuristic(name, logo, tvgId, originalCategory)) {
             return "Foreign";
         }
 
@@ -92,11 +125,12 @@ export const IPTVAdapter = {
     /**
      * 判断是否为顶级精品频道 (且非外语)
      */
-    isPremiumChannel(name) {
+    isPremiumChannel(name, logo, tvgId) {
         const premiumKeywords = ['cnn', 'bbc', 'hbo', 'discovery', 'history', 'star', 'espn', 'tsn', 'abc', 'nbc', 'cbs', 'fox'];
         const n = (name || "").toLowerCase();
 
-        if (FOREIGN_KEYWORDS.some(kw => n.includes(kw))) return false;
+        // 精品频道若被识别为外语则剥夺精品属性
+        if (this.isForeignHeuristic(name, logo, tvgId)) return false;
 
         return premiumKeywords.some(kw => n.includes(kw));
     },
@@ -105,7 +139,7 @@ export const IPTVAdapter = {
      * 获取全球聚合频道列表并进行内容精炼与多源折叠
      */
     async fetchCanadaChannels() {
-        console.log("[IPTV] Starting global brand consensus aggregation...");
+        console.log("[IPTV] Starting deep metadata language detection (UK/US/CA)...");
         const rawChannels = [];
 
         await Promise.all(M3U_SOURCES.map(async (url) => {
@@ -128,10 +162,10 @@ export const IPTVAdapter = {
 
             if (!baseName) continue;
 
-            const category = this.getCategoryByContent(baseName, ch.category);
+            const category = this.getCategoryByContent(baseName, ch.category, ch.logo, ch.tvgId);
             if (category === "Foreign") continue;
 
-            const isPremium = this.isPremiumChannel(baseName);
+            const isPremium = this.isPremiumChannel(baseName, ch.logo, ch.tvgId);
 
             if (!normalizedMap.has(baseName)) {
                 normalizedMap.set(baseName, {
@@ -146,7 +180,6 @@ export const IPTVAdapter = {
 
             const existing = normalizedMap.get(baseName);
 
-            // 内部源去重（基于 URL）
             if (!existing.sources.find(s => s.url === ch.url)) {
                 existing.sources.push({
                     url: ch.url,
@@ -162,7 +195,7 @@ export const IPTVAdapter = {
         return aggregated.filter(ch => {
             if (ch.isPremium) return true;
             return ch.sources.length > 0 && ch.category !== "General";
-        }).slice(0, 150); // 适度增加品牌多样性深度
+        }).slice(0, 150);
     },
 
     /**
