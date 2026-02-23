@@ -7,6 +7,7 @@ const M3U_SOURCES = [
     "https://iptv-org.github.io/iptv/countries/uk.m3u",
     "https://iptv-org.github.io/iptv/countries/us.m3u",
     "https://iptv-org.github.io/iptv/countries/ca.m3u",
+    "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_firetv.m3u",
     "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_canada.m3u8",
     "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_usa.m3u8"
 ];
