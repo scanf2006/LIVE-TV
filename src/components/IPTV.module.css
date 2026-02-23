@@ -158,7 +158,8 @@
 .card:focus {
     background: #000;
     border-color: #00E5FF;
-    transform: scale(1.18) translateY(-10px);
+    transform: scale(1.05);
+    /* 稍微减小由于收藏按钮占据空间后的缩放 */
     box-shadow: 0 25px 60px rgba(0, 229, 255, 0.4);
     z-index: 30;
     outline: 6px solid #00E5FF;
@@ -397,4 +398,74 @@
     font-weight: 600;
     color: rgba(255, 255, 255, 0.4);
     margin: 0 1.5rem;
+}
+
+/* 收藏功能样式 */
+.favoriteBtn {
+    position: absolute;
+    top: 1rem;
+    left: 1.5rem;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 20;
+    transition: all var(--tv-transition);
+    outline: none;
+}
+
+.favoriteBtnActive {
+    background: #ff4d4d !important;
+    border-color: #fff !important;
+    box-shadow: 0 0 15px rgba(255, 77, 77, 0.6);
+}
+
+.favoriteBtn:focus {
+    transform: scale(1.2);
+    background: #FFD600 !important;
+    border-color: #fff !important;
+    box-shadow: 0 0 25px rgba(255, 214, 0, 0.8);
+    color: #000 !important;
+}
+
+.favoriteIcon {
+    font-size: 1.4rem;
+    color: #fff;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.favoriteBtnActive .favoriteIcon {
+    transform: scale(1.2);
+}
+
+.favoriteBadge {
+    background: #ff4d4d;
+    color: #fff;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    margin-right: 0.5rem;
+}
+
+.cardTopRight {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.activeCardIndicator {
+    width: 12px;
+    height: 12px;
+    background: #00E5FF;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #00E5FF;
 }

@@ -15,8 +15,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 分页状态
+  // 分页与收藏状态
   const [currentPage, setCurrentPage] = useState(1);
+  const [favorites, setFavorites] = useState([]);
   const itemsPerPage = 50;
 
   const currentChannelRef = useRef(null);
@@ -30,19 +31,23 @@ export default function Home() {
     filteredChannelsRef.current = filteredChannels;
   }, [filteredChannels]);
 
+  // 初始化加载数据
   useEffect(() => {
     const loadChannels = async () => {
       try {
         setLoading(true);
+        // 加载收藏夹
+        const savedFavs = localStorage.getItem('iptv_favorites');
+        if (savedFavs) setFavorites(JSON.parse(savedFavs));
+
         const response = await fetch('/api/iptv');
         const data = await response.json();
 
         if (data.success) {
           setChannels(data.data);
-          setFilteredChannels(data.data);
 
-          // 提取所有分类并去重/排序
-          const cats = ['All', ...new Set(data.data.map(c => c.category).filter(Boolean))].sort();
+          // 提取所有分类
+          const cats = ['All', 'Favorites', ...new Set(data.data.map(c => c.category).filter(Boolean))].sort();
           setCategories(cats);
 
           if (data.data.length > 0) {
@@ -62,17 +67,44 @@ export default function Home() {
     loadChannels();
   }, []);
 
-  // 执行分类过滤，并重置页码
+  // 执行分类过滤、收藏置顶排序，并重置页码
   useEffect(() => {
-    setCurrentPage(1); // 切换分类时重置到第一页
-    if (currentCategory === 'All') {
-      setFilteredChannels(channels);
-    } else {
-      setFilteredChannels(channels.filter(c => c.category === currentCategory));
-    }
-  }, [currentCategory, channels]);
+    setCurrentPage(1);
+    let result = [];
 
-  // 计算当前分页数据
+    if (currentCategory === 'Favorites') {
+      result = channels.filter(c => favorites.includes(c.id));
+    } else if (currentCategory === 'All') {
+      result = [...channels];
+    } else {
+      result = channels.filter(c => c.category === currentCategory);
+    }
+
+    // 在任何分类下（除 Favorites 本身外），将已收藏频道置顶
+    if (currentCategory !== 'Favorites') {
+      result.sort((a, b) => {
+        const aFav = favorites.includes(a.id);
+        const bFav = favorites.includes(b.id);
+        if (aFav && !bFav) return -1;
+        if (!aFav && bFav) return 1;
+        return 0;
+      });
+    }
+
+    setFilteredChannels(result);
+  }, [currentCategory, channels, favorites]);
+
+  // 收藏切换逻辑
+  const toggleFavorite = (channelId) => {
+    setFavorites(prev => {
+      const next = prev.includes(channelId)
+        ? prev.filter(id => id !== channelId)
+        : [...prev, channelId];
+      localStorage.setItem('iptv_favorites', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const totalPages = Math.ceil(filteredChannels.length / itemsPerPage);
   const paginatedChannels = filteredChannels.slice(
     (currentPage - 1) * itemsPerPage,
@@ -81,9 +113,8 @@ export default function Home() {
 
   // 遥控器原生空间导航
   useEffect(() => {
-    // 尝试默认聚焦第一个元素
     const focusTimer = setTimeout(() => {
-      const firstFocusable = document.querySelector(`.${styles.tab}, .${styles.card}, .${styles.pageButton}`);
+      const firstFocusable = document.querySelector(`.${styles.tab}, .${styles.card}, .${styles.pageButton}, .${styles.favoriteBtn}`);
       if (firstFocusable && (!document.activeElement || document.activeElement === document.body)) {
         firstFocusable.focus();
       }
@@ -117,19 +148,10 @@ export default function Home() {
           e.preventDefault();
           const channel = currentChannelRef.current;
           const list = filteredChannelsRef.current;
-
           if (!channel || list.length === 0) return;
-
           const currentIndex = list.findIndex(c => c.id === channel.id);
           if (currentIndex === -1) return;
-
-          let nextIndex = currentIndex;
-          if (key === 'ArrowDown') {
-            nextIndex = (currentIndex + 1) % list.length;
-          } else {
-            nextIndex = (currentIndex - 1 + list.length) % list.length;
-          }
-
+          let nextIndex = (key === 'ArrowDown') ? (currentIndex + 1) % list.length : (currentIndex - 1 + list.length) % list.length;
           setCurrentChannel(list[nextIndex]);
         }
         return;
@@ -137,8 +159,7 @@ export default function Home() {
 
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
         e.preventDefault();
-        // 将分页按钮纳入焦点候选池
-        const focusables = Array.from(document.querySelectorAll(`.${styles.tab}, .${styles.card}, .${styles.pageButton}`));
+        const focusables = Array.from(document.querySelectorAll(`.${styles.tab}, .${styles.card}, .${styles.pageButton}, .${styles.favoriteBtn}`));
         const current = document.activeElement;
 
         if (!focusables.includes(current)) {
@@ -194,7 +215,7 @@ export default function Home() {
       window.removeEventListener('keydown', handleKeyDown);
       clearTimeout(focusTimer);
     };
-  }, [channels, categories, currentCategory, currentPage]);
+  }, [channels, categories, currentCategory, currentPage, favorites]);
 
   return (
     <main className={`${styles.container} ${styles.fadeIn}`}>
@@ -219,12 +240,7 @@ export default function Home() {
           <div className={styles.loading} style={{ color: '#ff4d4d' }}>
             <span style={{ fontSize: '3rem' }}>⚠️</span>
             <p>{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              style={{ padding: '0.8rem 2rem', background: 'var(--primary)', border: 'none', borderRadius: 'var(--radius)', color: 'white', cursor: 'pointer' }}
-            >
-              重新重试
-            </button>
+            <button onClick={() => window.location.reload()} style={{ padding: '0.8rem 2rem', background: 'var(--primary)', border: 'none', borderRadius: 'var(--radius)', color: 'white' }}>重新重试</button>
           </div>
         ) : (
           <>
@@ -236,48 +252,29 @@ export default function Home() {
                   key={cat}
                   className={`${styles.tab} ${currentCategory === cat ? styles.tabActive : ''}`}
                   onClick={() => setCurrentCategory(cat)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') setCurrentCategory(cat);
-                  }}
                   tabIndex="0"
                 >
-                  {cat || 'General'}
+                  {cat === 'Favorites' ? `❤️ ${cat}` : (cat || 'General')}
                 </button>
               ))}
             </div>
 
-            {/* 顶部分页导航（当数据量大时显示） */}
             {totalPages > 1 && (
               <div className={styles.paginationContainer}>
-                <button
-                  className={styles.pageButton}
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  style={{ opacity: currentPage === 1 ? 0.3 : 1 }}
-                >
-                  上一页 (Previous)
-                </button>
-                <div className={styles.pageInfo}>
-                  第 {currentPage} 页 / 共 {totalPages} 页 ({filteredChannels.length} 频道)
-                </div>
-                <button
-                  className={styles.pageButton}
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  style={{ opacity: currentPage === totalPages ? 0.3 : 1 }}
-                >
-                  下一页 (Next)
-                </button>
+                <button className={styles.pageButton} onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} style={{ opacity: currentPage === 1 ? 0.3 : 1 }}>上一页</button>
+                <div className={styles.pageInfo}>第 {currentPage} / {totalPages} 页</div>
+                <button className={styles.pageButton} onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} style={{ opacity: currentPage === totalPages ? 0.3 : 1 }}>下一页</button>
               </div>
             )}
 
             <ChannelGrid
               channels={paginatedChannels}
+              favorites={favorites}
+              onToggleFavorite={toggleFavorite}
               onSelect={setCurrentChannel}
               currentId={currentChannel?.id}
             />
 
-            {/* 底部分页导航 */}
             {totalPages > 1 && (
               <div className={styles.paginationContainer} style={{ marginTop: '5rem' }}>
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
@@ -297,7 +294,6 @@ export default function Home() {
 
       <footer style={{ marginTop: '4rem', padding: '2rem 0', borderTop: '1px solid var(--border)', textAlign: 'center', opacity: 0.5, fontSize: '0.9rem' }}>
         <p>© 2026 Global News PWA - World Premium Edition</p>
-        <p>资源来源于开源社区，仅供学习交流</p>
       </footer>
     </main>
   );
