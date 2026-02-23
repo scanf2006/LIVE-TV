@@ -7,10 +7,17 @@ const M3U_SOURCES = [
     "https://iptv-org.github.io/iptv/countries/uk.m3u",
     "https://iptv-org.github.io/iptv/countries/us.m3u",
     "https://iptv-org.github.io/iptv/countries/ca.m3u",
+    "https://iptv-org.github.io/iptv/countries/au.m3u",
+    "https://iptv-org.github.io/iptv/countries/nz.m3u",
+    "https://iptv-org.github.io/iptv/countries/ie.m3u",
+    "https://iptv-org.github.io/iptv/countries/ph.m3u",
     "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_firetv.m3u",
     "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_klowdtv.m3u",
     "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_pbs.m3u",
     "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_tubi.m3u",
+    "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_plex.m3u",
+    "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_pluto.m3u",
+    "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_samsung.m3u",
     "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_canada.m3u8",
     "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_usa.m3u8"
 ];
@@ -195,7 +202,7 @@ export const IPTVAdapter = {
         return aggregated.filter(ch => {
             if (ch.isPremium) return true;
             return ch.sources.length > 0 && ch.category !== "General";
-        }).slice(0, 150);
+        }).slice(0, 300);
     },
 
     /**
@@ -263,7 +270,7 @@ export const IPTVAdapter = {
         const verifiedGroups = [];
 
         const premiumOnes = allChapters.filter(c => c.isPremium);
-        const normalOnes = allChapters.filter(c => !c.isPremium).slice(0, 50);
+        const normalOnes = allChapters.filter(c => !c.isPremium).slice(0, 200); // 探测池扩容
         const pool = [...premiumOnes, ...normalOnes];
 
         const batchSize = 10;
@@ -284,7 +291,7 @@ export const IPTVAdapter = {
                 return null;
             }));
             verifiedGroups.push(...results.filter(Boolean));
-            if (verifiedGroups.length >= 100) break;
+            if (verifiedGroups.length >= 200) break; // 展示额度扩容
         }
 
         return verifiedGroups.sort((a, b) => {
