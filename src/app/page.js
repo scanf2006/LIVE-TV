@@ -15,6 +15,10 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
   const currentChannelRef = useRef(null);
   const filteredChannelsRef = useRef([]);
 
@@ -58,8 +62,9 @@ export default function Home() {
     loadChannels();
   }, []);
 
-  // 执行分类过滤
+  // 执行分类过滤，并重置页码
   useEffect(() => {
+    setCurrentPage(1); // 切换分类时重置到第一页
     if (currentCategory === 'All') {
       setFilteredChannels(channels);
     } else {
@@ -67,11 +72,18 @@ export default function Home() {
     }
   }, [currentCategory, channels]);
 
-  // 遥控器原生空间导航 (替代第三方包避免 SSR 报错)
+  // 计算当前分页数据
+  const totalPages = Math.ceil(filteredChannels.length / itemsPerPage);
+  const paginatedChannels = filteredChannels.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // 遥控器原生空间导航
   useEffect(() => {
     // 尝试默认聚焦第一个元素
     const focusTimer = setTimeout(() => {
-      const firstFocusable = document.querySelector(`.${styles.tab}, .${styles.card}`);
+      const firstFocusable = document.querySelector(`.${styles.tab}, .${styles.card}, .${styles.pageButton}`);
       if (firstFocusable && (!document.activeElement || document.activeElement === document.body)) {
         firstFocusable.focus();
       }
@@ -80,17 +92,14 @@ export default function Home() {
     const handleKeyDown = (e) => {
       const key = e.key;
 
-      // 防止 Back 键直接退出 PWA (Fire TV 物理返回键映射为 Backspace 或 Escape)
       if (key === 'Escape' || key === 'Backspace' || key === 'GoBack') {
         if (document.fullscreenElement) {
           e.preventDefault();
           document.exitFullscreen();
           return;
         }
-        // 非全屏下点击返回，如果当前有卡片聚焦，不做额外拦截，允许系统处理
       }
 
-      // 保留 F 键全屏功能
       if (key === 'f' || key === 'F' || key === 'MediaPlayPause') {
         const video = document.querySelector('video');
         if (video) {
@@ -103,7 +112,6 @@ export default function Home() {
         return;
       }
 
-      // 沉浸式全屏状态下：按上下键无缝切台
       if (document.fullscreenElement) {
         if (key === 'ArrowUp' || key === 'ArrowDown') {
           e.preventDefault();
@@ -116,9 +124,9 @@ export default function Home() {
           if (currentIndex === -1) return;
 
           let nextIndex = currentIndex;
-          if (key === 'ArrowDown') { // 下一台
+          if (key === 'ArrowDown') {
             nextIndex = (currentIndex + 1) % list.length;
-          } else { // 上一台
+          } else {
             nextIndex = (currentIndex - 1 + list.length) % list.length;
           }
 
@@ -127,13 +135,12 @@ export default function Home() {
         return;
       }
 
-      // 方向键导航
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
         e.preventDefault();
-        const focusables = Array.from(document.querySelectorAll(`.${styles.tab}, .${styles.card}`));
+        // 将分页按钮纳入焦点候选池
+        const focusables = Array.from(document.querySelectorAll(`.${styles.tab}, .${styles.card}, .${styles.pageButton}`));
         const current = document.activeElement;
 
-        // 如果当前没有聚焦在任何交互组件上，默认聚焦首个频道
         if (!focusables.includes(current)) {
           const firstCard = document.querySelector(`.${styles.card}`);
           if (firstCard) firstCard.focus();
@@ -150,7 +157,6 @@ export default function Home() {
           let isEligible = false;
           let distance = 0;
 
-          // 使用多维度距离加权算法 (中心点优先)
           const centerX = rect.left + rect.width / 2;
           const centerY = rect.top + rect.height / 2;
           const curCenterX = currentRect.left + currentRect.width / 2;
@@ -178,7 +184,6 @@ export default function Home() {
 
         if (bestCandidate) {
           bestCandidate.focus();
-          // 电视端神技：平滑滚动到屏幕中心以保持视野最优
           bestCandidate.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
         }
       }
@@ -189,11 +194,10 @@ export default function Home() {
       window.removeEventListener('keydown', handleKeyDown);
       clearTimeout(focusTimer);
     };
-  }, [channels, categories, currentCategory]);
+  }, [channels, categories, currentCategory, currentPage]);
 
   return (
     <main className={`${styles.container} ${styles.fadeIn}`}>
-      {/* 全局背景氛围 */}
       <div className={styles.ambientLight} />
 
       <div className={styles.content}>
@@ -202,14 +206,14 @@ export default function Home() {
             Global Premium TV
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1.2rem' }}>
-            Curated UK/US/CA Streams • <span style={{ color: 'var(--tv-primary)' }}>{channels.length} Premium Channels Verified</span>
+            Curated World Streams • <span style={{ color: 'var(--tv-primary)' }}>{channels.length} Premium Channels Verified</span>
           </p>
         </div>
 
         {loading ? (
           <div className={styles.loading}>
             <div className={styles.spinner}></div>
-            <p>正在高速扫描并精选 60 个高清无广告源...</p>
+            <p>正在同步全球 15 个优质源并执行品牌级去重...</p>
           </div>
         ) : error ? (
           <div className={styles.loading} style={{ color: '#ff4d4d' }}>
@@ -226,7 +230,6 @@ export default function Home() {
           <>
             <IPTVPlayer channel={currentChannel} />
 
-            {/* 分类 Tabs 导航 */}
             <div className={styles.tabs} role="tablist">
               {categories.map(cat => (
                 <button
@@ -243,17 +246,57 @@ export default function Home() {
               ))}
             </div>
 
+            {/* 顶部分页导航（当数据量大时显示） */}
+            {totalPages > 1 && (
+              <div className={styles.paginationContainer}>
+                <button
+                  className={styles.pageButton}
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  style={{ opacity: currentPage === 1 ? 0.3 : 1 }}
+                >
+                  上一页 (Previous)
+                </button>
+                <div className={styles.pageInfo}>
+                  第 {currentPage} 页 / 共 {totalPages} 页 ({filteredChannels.length} 频道)
+                </div>
+                <button
+                  className={styles.pageButton}
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  style={{ opacity: currentPage === totalPages ? 0.3 : 1 }}
+                >
+                  下一页 (Next)
+                </button>
+              </div>
+            )}
+
             <ChannelGrid
-              channels={filteredChannels}
+              channels={paginatedChannels}
               onSelect={setCurrentChannel}
               currentId={currentChannel?.id}
             />
+
+            {/* 底部分页导航 */}
+            {totalPages > 1 && (
+              <div className={styles.paginationContainer} style={{ marginTop: '5rem' }}>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    className={`${styles.pageButton} ${currentPage === page ? styles.pageButtonActive : ''}`}
+                    onClick={() => setCurrentPage(page)}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
 
       <footer style={{ marginTop: '4rem', padding: '2rem 0', borderTop: '1px solid var(--border)', textAlign: 'center', opacity: 0.5, fontSize: '0.9rem' }}>
-        <p>© 2026 Global News PWA - Canada IPTV Edition</p>
+        <p>© 2026 Global News PWA - World Premium Edition</p>
         <p>资源来源于开源社区，仅供学习交流</p>
       </footer>
     </main>
