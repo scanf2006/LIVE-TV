@@ -9,8 +9,18 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
 
+    const [activeSourceIndex, setActiveSourceIndex] = useState(0);
+
+    // 当切换频道时，重置线路索引
     useEffect(() => {
-        if (!channel || !channel.url) return;
+        setActiveSourceIndex(0);
+    }, [channel?.id]);
+
+    useEffect(() => {
+        if (!channel || (!channel.url && (!channel.sources || channel.sources.length === 0))) return;
+
+        const currentUrl = channel.sources ? channel.sources[activeSourceIndex]?.url : channel.url;
+        if (!currentUrl) return;
 
         const initPlayer = async () => {
             setLoading(true);
@@ -19,7 +29,6 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
             const video = videoRef.current;
             if (!video) return;
 
-            // 动态导入 hls.js 以避免在 SSR 或非浏览器环境报错
             try {
                 const Hls = (await import('hls.js')).default;
 
@@ -34,7 +43,7 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
                         backBufferLength: 60
                     });
 
-                    hls.loadSource(channel.url);
+                    hls.loadSource(currentUrl);
                     hls.attachMedia(video);
                     hlsRef.current = hls;
 
@@ -53,15 +62,14 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
                                     hls.recoverMediaError();
                                     break;
                                 default:
-                                    setError("播放失败，请尝试其他频道");
+                                    setError("播放失败，请尝试切换线路或频道");
                                     hls.destroy();
                                     break;
                             }
                         }
                     });
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    // 原生支持 (如 Safari, iOS)
-                    video.src = channel.url;
+                    video.src = currentUrl;
                     video.addEventListener('loadedmetadata', () => {
                         setLoading(false);
                         if (autoPlay) video.play();
@@ -84,7 +92,22 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
                 hlsRef.current = null;
             }
         };
-    }, [channel, autoPlay]);
+    }, [channel, activeSourceIndex, autoPlay]);
+
+    // 监听键盘左右键切换线路
+    useEffect(() => {
+        const handleSourceKey = (e) => {
+            if (!channel?.sources || channel.sources.length <= 1) return;
+
+            if (e.key === 'ArrowLeft') {
+                setActiveSourceIndex(prev => (prev - 1 + channel.sources.length) % channel.sources.length);
+            } else if (e.key === 'ArrowRight') {
+                setActiveSourceIndex(prev => (prev + 1) % channel.sources.length);
+            }
+        };
+        window.addEventListener('keydown', handleSourceKey);
+        return () => window.removeEventListener('keydown', handleSourceKey);
+    }, [channel]);
 
     if (!channel) return null;
 
@@ -96,7 +119,7 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
             <video
                 ref={videoRef}
                 className={styles.videoPlayer}
-                controls={false} // 使用自定义控制界面
+                controls={false}
                 playsInline
                 poster={channel.logo}
             />
@@ -112,7 +135,7 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
                     <div style={{ textAlign: 'center' }}>
                         <span style={{ fontSize: '3rem', marginBottom: '1rem', display: 'block' }}>📡</span>
                         <p style={{ color: '#ff4d4d', fontWeight: 'bold', fontSize: '1.2rem' }}>{error}</p>
-                        <p style={{ opacity: 0.5, marginTop: '0.5rem' }}>请尝试切换其他频道</p>
+                        <p style={{ opacity: 0.5, marginTop: '0.5rem' }}>请尝试按 [方向键] 切换备选线路</p>
                     </div>
                 </div>
             )}
@@ -120,13 +143,23 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
             <div className={styles.playerOverlay}>
                 <div className={styles.channelInfo}>
                     {channel.logo && <img src={channel.logo} alt="" className={styles.channelLogo} />}
-                    <div>
-                        <span className={styles.channelName}>{channel.name}</span>
+                    <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <span className={styles.channelName}>{channel.name}</span>
+                            {channel.sources && channel.sources.length > 1 && (
+                                <div className={styles.sourceSelector}>
+                                    线路 {activeSourceIndex + 1} / {channel.sources.length}
+                                </div>
+                            )}
+                        </div>
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem' }}>
-                            <div className={styles.categoryBadge}>Live</div>
+                            <div className={styles.categoryBadge}>{channel.isPremium ? 'PRO 精选' : 'Live'}</div>
                             {channel.category && <span style={{ opacity: 0.6, fontSize: '0.9rem' }}>• {channel.category}</span>}
                             <div className={styles.tvHint}>
-                                <span>按 [上下键] 快速切台</span>
+                                {channel.sources && channel.sources.length > 1 && (
+                                    <span style={{ color: 'var(--tv-primary)', fontWeight: 'bold' }}>按 [左右键] 切换线路</span>
+                                )}
+                                <span>按 [上下键] 切台</span>
                                 <span>按 [确认键] 全屏</span>
                             </div>
                         </div>

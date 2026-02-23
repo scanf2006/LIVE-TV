@@ -199,10 +199,10 @@ export default function Home() {
       <div className={styles.content}>
         <div style={{ marginBottom: '3rem' }}>
           <h1 className="text-gradient" style={{ fontSize: '3.5rem', marginBottom: '0.5rem', fontWeight: 900 }}>
-            Live Canada
+            Global Premium TV
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1.2rem' }}>
-            Premium Live Streams • <span style={{ color: 'var(--tv-primary)' }}>{channels.length} Channels Verified</span>
+            Curated UK/US/CA Streams • <span style={{ color: 'var(--tv-primary)' }}>{channels.length} Premium Channels Verified</span>
           </p>
         </div>
 

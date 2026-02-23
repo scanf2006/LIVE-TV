@@ -326,3 +326,27 @@
     content: '•';
     color: var(--tv-primary);
 }
+
+.sourceSelector {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--tv-border);
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--tv-primary);
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+    animation: flash 2s infinite;
+}
+
+@keyframes flash {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+}
