@@ -80,6 +80,16 @@ export default function Home() {
     const handleKeyDown = (e) => {
       const key = e.key;
 
+      // 防止 Back 键直接退出 PWA (Fire TV 物理返回键映射为 Backspace 或 Escape)
+      if (key === 'Escape' || key === 'Backspace' || key === 'GoBack') {
+        if (document.fullscreenElement) {
+          e.preventDefault();
+          document.exitFullscreen();
+          return;
+        }
+        // 非全屏下点击返回，如果当前有卡片聚焦，不做额外拦截，允许系统处理
+      }
+
       // 保留 F 键全屏功能
       if (key === 'f' || key === 'F' || key === 'MediaPlayPause') {
         const video = document.querySelector('video');
@@ -114,7 +124,6 @@ export default function Home() {
 
           setCurrentChannel(list[nextIndex]);
         }
-        // 全屏状态下限制焦点乱跑，不再处理常规网格导航
         return;
       }
 
@@ -124,8 +133,10 @@ export default function Home() {
         const focusables = Array.from(document.querySelectorAll(`.${styles.tab}, .${styles.card}`));
         const current = document.activeElement;
 
+        // 如果当前没有聚焦在任何交互组件上，默认聚焦首个频道
         if (!focusables.includes(current)) {
-          if (focusables.length) focusables[0].focus();
+          const firstCard = document.querySelector(`.${styles.card}`);
+          if (firstCard) firstCard.focus();
           return;
         }
 
@@ -139,19 +150,24 @@ export default function Home() {
           let isEligible = false;
           let distance = 0;
 
-          // 简易包围盒碰撞和距离平方计算 (找出最近的节点)
+          // 使用多维度距离加权算法 (中心点优先)
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+          const curCenterX = currentRect.left + currentRect.width / 2;
+          const curCenterY = currentRect.top + currentRect.height / 2;
+
           if (key === 'ArrowRight' && rect.left >= currentRect.right - 10) {
             isEligible = true;
-            distance = Math.pow(rect.left - currentRect.right, 2) + Math.pow(rect.top - currentRect.top, 2) * 2;
+            distance = Math.pow(rect.left - currentRect.right, 2) + Math.pow(centerY - curCenterY, 2) * 4;
           } else if (key === 'ArrowLeft' && rect.right <= currentRect.left + 10) {
             isEligible = true;
-            distance = Math.pow(currentRect.left - rect.right, 2) + Math.pow(rect.top - currentRect.top, 2) * 2;
+            distance = Math.pow(currentRect.left - rect.right, 2) + Math.pow(centerY - curCenterY, 2) * 4;
           } else if (key === 'ArrowDown' && rect.top >= currentRect.bottom - 10) {
             isEligible = true;
-            distance = Math.pow(rect.top - currentRect.bottom, 2) + Math.pow(rect.left - currentRect.left, 2) * 2;
+            distance = Math.pow(rect.top - currentRect.bottom, 2) + Math.pow(centerX - curCenterX, 2) * 5;
           } else if (key === 'ArrowUp' && rect.bottom <= currentRect.top + 10) {
             isEligible = true;
-            distance = Math.pow(currentRect.top - rect.bottom, 2) + Math.pow(rect.left - currentRect.left, 2) * 2;
+            distance = Math.pow(currentRect.top - rect.bottom, 2) + Math.pow(centerX - curCenterX, 2) * 5;
           }
 
           if (isEligible && distance < minDistance) {
@@ -162,7 +178,8 @@ export default function Home() {
 
         if (bestCandidate) {
           bestCandidate.focus();
-          bestCandidate.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+          // 电视端神技：平滑滚动到屏幕中心以保持视野最优
+          bestCandidate.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
         }
       }
     };

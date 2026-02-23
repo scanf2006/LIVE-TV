@@ -122,9 +122,13 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
                     {channel.logo && <img src={channel.logo} alt="" className={styles.channelLogo} />}
                     <div>
                         <span className={styles.channelName}>{channel.name}</span>
-                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem' }}>
                             <div className={styles.categoryBadge}>Live</div>
                             {channel.category && <span style={{ opacity: 0.6, fontSize: '0.9rem' }}>• {channel.category}</span>}
+                            <div className={styles.tvHint}>
+                                <span>按 [上下键] 快速切台</span>
+                                <span>按 [确认键] 全屏</span>
+                            </div>
                         </div>
                     </div>
                 </div>
