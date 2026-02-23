@@ -18,10 +18,10 @@ const M3U_SOURCES = [
 
 export const IPTVAdapter = {
     /**
-     * 获取并从多个源聚合加拿大频道
+     * 获取并从多个源聚合频道，实施深度去重与质量过滤
      */
     async fetchCanadaChannels() {
-        console.log("[IPTV] Starting multi-source aggregation...");
+        console.log("[IPTV] Starting deep optimized aggregation...");
         const allFetchedChannels = [];
 
         for (const url of M3U_SOURCES) {
@@ -34,88 +34,60 @@ export const IPTVAdapter = {
 
                 const isUSSource = url.includes('us.m3u') || url.toLowerCase().includes('usa.m3u');
                 if (isUSSource) {
-                    // Extract ~45 high quality American channels matching big networks
                     const premiumUS = channels.filter(c => {
                         const n = (c.name || '').toLowerCase();
-
-                        // 1. 强力黑名单清洗：过滤用户不再需要的新闻/分支频道
-                        if (n.includes('cbs news')) return false;
-                        if (n.includes('bloomberg')) return false;
-                        if (n.includes('abc 5 boston')) return false;
-                        if (n.includes('abc news live')) return false;
-                        if (n.includes('cnbc') && !n.includes('msnbc')) return false;
-
-                        // 2. 覆盖绝大部分优质美区综合频道与体娱台
-                        return n.includes('cnn') || n.includes('fox') || n.includes('nbc') || n.includes('abc') || n.includes('cbs') || n.includes('espn') || n.includes('usa') || n.includes('hbo') || n.includes('tnt') || n.includes('tbs') || n.includes('amc') || n.includes('discovery') || n.includes('history') || n.includes('mtv') || n.includes('comedy central') || n.includes('msnbc');
+                        if (n.includes('cbs news') || n.includes('bloomberg') || n.includes('abc news live') || (n.includes('cnbc') && !n.includes('msnbc'))) return false;
+                        return n.includes('cnn') || n.includes('fox') || n.includes('nbc') || n.includes('abc') || n.includes('cbs') || n.includes('espn') || n.includes('usa') || n.includes('hbo') || n.includes('tnt') || n.includes('amc') || n.includes('discovery') || n.includes('history') || n.includes('msnbc');
                     }).slice(0, 45);
 
-                    // 顶级频道权重排序，优先保证用户要求的大台排在最前端
-                    const topTier = ['hbo', 'history', 'discovery', 'cnn', 'fox', 'nbc', 'abc', 'cbs', 'espn', 'tnt', 'amc'];
-                    premiumUS.sort((a, b) => {
-                        const nameA = (a.name || '').toLowerCase();
-                        const nameB = (b.name || '').toLowerCase();
-
-                        const scoreA = topTier.findIndex(kw => nameA.includes(kw));
-                        const scoreB = topTier.findIndex(kw => nameB.includes(kw));
-
-                        const weightA = scoreA === -1 ? 999 : scoreA;
-                        const weightB = scoreB === -1 ? 999 : scoreB;
-
-                        return weightA - weightB;
-                    });
-
                     premiumUS.forEach(c => c.category = "USA Streams");
-                    // 使用 unshift 插入到数组最前面，防止被验证阶段的 60 个上限截断截掉末尾
                     allFetchedChannels.unshift(...premiumUS);
-                    console.log(`[IPTV] Added ${premiumUS.length} US Channels from: ${url}`);
                 } else {
                     allFetchedChannels.push(...channels);
-                    console.log(`[IPTV] Fetched ${channels.length} channels from: ${url}`);
                 }
             } catch (error) {
                 console.error(`[IPTV] Failed to fetch source ${url}:`, error.message);
             }
         }
 
-        // 去重逻辑：基于 URL 或名称
-        const uniqueChannels = [];
+        // 1. 基础去重 (URL 级别)
+        const uniqueByUrl = [];
         const seenUrls = new Set();
-
         for (const ch of allFetchedChannels) {
             if (ch.url && !seenUrls.has(ch.url)) {
                 seenUrls.add(ch.url);
-                uniqueChannels.push(ch);
+                uniqueByUrl.push(ch);
             }
         }
 
-        console.log(`[IPTV] Aggregation complete. Total unique channels before filtering: ${uniqueChannels.length}`);
+        // 2. 序列频道精简 (处理如 "News 1, 2, 3, 4" 这种冗余)
+        // 算法：提取名称中的基础部分，统计出现次数，同名序列仅保留前 2 个
+        const sequenceMap = new Map();
+        const simplifiedChannels = [];
 
-        // 极简过滤：加拿大仅保留特供白名单，其余全给美国频道
-        const highQualityEnglishChannels = uniqueChannels.filter(ch => {
+        for (const ch of uniqueByUrl) {
+            const name = ch.name || "";
+            // 正则匹配末尾的数字，如 "CBC 1", "NBC 4" -> 基础名 "CBC", "NBC"
+            const baseName = name.replace(/\s+\d+$/g, '').trim().toLowerCase();
+
+            const count = sequenceMap.get(baseName) || 0;
+            if (count < 2) { // 每个序列只保留前 2 个变体
+                sequenceMap.set(baseName, count + 1);
+                simplifiedChannels.push(ch);
+            }
+        }
+
+        // 3. 最终质量过滤 (加拿大白名单 + 优质美国频道)
+        return simplifiedChannels.filter(ch => {
             const name = (ch.name || "").toLowerCase();
             const category = (ch.category || "").toLowerCase();
-
-            // 1. 如果是提取到的精华美国频道，直接放行
-            if (category.includes('usa streams')) {
-                return true;
-            }
-
-            // 2. 针对加拿大频道实施严格白名单
-            const isTargetCanadian = name.includes('cbc toronto') || name.includes('citynews toronto');
-            if (isTargetCanadian) {
-                return true;
-            }
-
-            // 3. 其它一概不要
-            return false;
+            if (category.includes('usa streams')) return true;
+            return name.includes('cbc toronto') || name.includes('citynews toronto');
         });
-
-        console.log(`[IPTV] Final filtered channels: ${highQualityEnglishChannels.length}`);
-        return highQualityEnglishChannels;
     },
 
     /**
-     * 解析 M3U 格式文本
+     * 解析 M3U 格式文本，并注入码率分数
      */
     parseM3U(text) {
         const lines = text.split("\n");
@@ -125,105 +97,95 @@ export const IPTVAdapter = {
         for (let line of lines) {
             line = line.trim();
             if (line.startsWith("#EXTINF:")) {
-                // 解析信息行: #EXTINF:-1 tvg-id="..." tvg-logo="..." group-title="...",Channel Name
-                currentChannel = {};
-
-                // 提取名称 (逗号后的内容)
+                currentChannel = { qualityScore: 0 };
                 const commaIndex = line.lastIndexOf(",");
                 if (commaIndex !== -1) {
                     currentChannel.name = line.substring(commaIndex + 1).trim();
+                    // 识别码率关键字并打分
+                    const n = currentChannel.name.toLowerCase();
+                    if (n.includes('1080p') || n.includes('fhd')) currentChannel.qualityScore = 100;
+                    else if (n.includes('720p') || n.includes('hd')) currentChannel.qualityScore = 80;
+                    else if (n.includes('480p') || n.includes('sd')) currentChannel.qualityScore = 50;
                 }
-
-                // 提取 Logo
                 const logoMatch = line.match(/tvg-logo="([^"]+)"/);
                 if (logoMatch) currentChannel.logo = logoMatch[1];
-
-                // 提取 分组
                 const groupMatch = line.match(/group-title="([^"]+)"/);
                 if (groupMatch) currentChannel.category = groupMatch[1];
-
-                // 提取 语言
-                const langMatch = line.match(/tvg-language="([^"]+)"/);
-                if (langMatch) currentChannel.language = langMatch[1];
-
-                // 提取 ID
                 const idMatch = line.match(/tvg-id="([^"]+)"/);
                 if (idMatch) currentChannel.tvgId = idMatch[1];
-
             } else if (line.startsWith("http") && currentChannel) {
-                // 流地址行
                 currentChannel.url = line;
-                // 生成唯一标识
                 currentChannel.id = `iptv-${currentChannel.tvgId || Math.random().toString(36).substr(2, 9)}`;
                 channels.push(currentChannel);
                 currentChannel = null;
             }
         }
-
         return channels;
     },
 
     /**
-     * 验证单个流地址是否可用
+     * 验证单个流地址是否可用，并返回延迟 (ms)
      * @param {string} url 
      */
     async validateStream(url) {
+        const start = Date.now();
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
+            const timeoutId = setTimeout(() => controller.abort(), 3500);
 
             const response = await fetch(url, {
                 method: 'HEAD',
                 signal: controller.signal,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                }
+                headers: { 'User-Agent': 'Mozilla/5.0' }
             });
 
             clearTimeout(timeoutId);
-            return response.ok || response.status === 206; // 206 Partial Content 也算成功
+            const latency = Date.now() - start;
+            if (response.ok || response.status === 206) return { isValid: true, latency };
+
+            // 备选方案：尝试 Range 请求
+            const controller2 = new AbortController();
+            const timeoutId2 = setTimeout(() => controller2.abort(), 3500);
+            const res2 = await fetch(url, { signal: controller2.signal, headers: { 'Range': 'bytes=0-0' } });
+            clearTimeout(timeoutId2);
+            return { isValid: res2.ok, latency: Date.now() - start };
         } catch (e) {
-            // 某些服务器可能不支持 HEAD 请求，尝试简单的 GET 并立即断开
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000);
-                const response = await fetch(url, {
-                    signal: controller.signal,
-                    headers: { 'Range': 'bytes=0-0' } // 只请求 1 字节
-                });
-                clearTimeout(timeoutId);
-                return response.ok;
-            } catch (innerErr) {
-                return false;
-            }
+            return { isValid: false, latency: 9999 };
         }
     },
 
     /**
-     * 批量验证频道并过滤可用源
+     * 批量验证频道并根据 质量+延迟 进行最终金牌筛选
      */
     async getVerifiedChannels() {
         const allChannels = await this.fetchCanadaChannels();
-
-        // 为了性能，我们并行验证，但限制并发数防止带宽和性能瓶颈
         const verified = [];
-        const batchSize = 40; // 高并发验证
+        const batchSize = 30;
 
         for (let i = 0; i < allChannels.length; i += batchSize) {
             const batch = allChannels.slice(i, i + batchSize);
             const results = await Promise.all(
                 batch.map(async (ch) => {
-                    const isValid = await this.validateStream(ch.url);
-                    return isValid ? ch : null;
+                    const check = await this.validateStream(ch.url);
+                    if (check.isValid) {
+                        return { ...ch, latency: check.latency };
+                    }
+                    return null;
                 })
             );
             verified.push(...results.filter(Boolean));
-
-            // 将上限降低到 60 个。这对于 TV 首屏来说已经足够多，且能极大缩短首次加载时间。
-            if (verified.length >= 60) break;
+            if (verified.length >= 80) break; // 扩大上限以供排序后挑选
         }
 
-        // 如果没有可用频道，至少返回前几个原始频道
-        return verified.length > 0 ? verified : allChannels.slice(0, 40);
+        // 金牌排序算法：质量分优先，同质量下延迟低者胜出
+        verified.sort((a, b) => {
+            if (b.qualityScore !== a.qualityScore) {
+                return b.qualityScore - a.qualityScore;
+            }
+            return a.latency - b.latency;
+        });
+
+        // 最终只输出前 60 个最优源
+        return verified.slice(0, 60);
     }
 };
