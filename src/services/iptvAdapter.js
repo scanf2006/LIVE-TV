@@ -22,6 +22,8 @@ const CONTENT_MAPPING = {
     'Music': ['music', 'mtv', 'v2beat', 'stingray', 'concert']
 };
 
+const FOREIGN_KEYWORDS = ['pashto', 'persian', 'iran', 'farsi', 'arabic', 'urdu', 'bengali', 'tamil', 'punjabi', 'turkish', 'hindi', 'afghan'];
+
 export const IPTVAdapter = {
     /**
      * 根据名称识别内容分类
@@ -29,6 +31,11 @@ export const IPTVAdapter = {
     getCategoryByContent(name, originalCategory) {
         const n = (name || "").toLowerCase();
         const oc = (originalCategory || "").toLowerCase();
+
+        // 优先过滤外语
+        if (FOREIGN_KEYWORDS.some(kw => n.includes(kw) || oc.includes(kw))) {
+            return "Foreign";
+        }
 
         for (const [cat, keywords] of Object.entries(CONTENT_MAPPING)) {
             if (keywords.some(kw => n.includes(kw) || oc.includes(kw))) {
@@ -39,11 +46,15 @@ export const IPTVAdapter = {
     },
 
     /**
-     * 判断是否为顶级精品频道
+     * 判断是否为顶级精品频道 (且非外语)
      */
     isPremiumChannel(name) {
         const premiumKeywords = ['cnn', 'bbc', 'hbo', 'discovery', 'history', 'star', 'espn', 'tsn', 'abc', 'nbc', 'cbs', 'fox'];
         const n = (name || "").toLowerCase();
+
+        // 如果包含外语关键字，哪怕包含 premium 词根也不算精品 (例如 BBC Persian)
+        if (FOREIGN_KEYWORDS.some(kw => n.includes(kw))) return false;
+
         return premiumKeywords.some(kw => n.includes(kw));
     },
 
@@ -51,7 +62,7 @@ export const IPTVAdapter = {
      * 获取全球聚合频道列表并进行内容精炼与多源折叠
      */
     async fetchCanadaChannels() {
-        console.log("[IPTV] Starting global premium aggregation (UK/US/CA)...");
+        console.log("[IPTV] Starting global premium aggregation (UK/US/CA) with deep filtering...");
         const rawChannels = [];
 
         // 并发获取所有源
@@ -72,16 +83,23 @@ export const IPTVAdapter = {
 
         for (const ch of rawChannels) {
             const rawName = ch.name || "Unknown";
+
+            // 深度去噪：去除括号、分辨率、地区标识以及末尾数字
             const baseName = rawName
                 .replace(/\(.*\)/g, '')
                 .replace(/\[.*\]/g, '')
                 .replace(/1080p|720p|fhd|hd|sd/gi, '')
+                .replace(/\s+\d+$/g, '')
                 .replace(/\s+/g, ' ')
                 .trim();
 
             if (!baseName) continue;
 
             const category = this.getCategoryByContent(baseName, ch.category);
+
+            // 过滤掉确定为外语的分类
+            if (category === "Foreign") continue;
+
             const isPremium = this.isPremiumChannel(baseName);
 
             if (!normalizedMap.has(baseName)) {
@@ -109,7 +127,7 @@ export const IPTVAdapter = {
         return aggregated.filter(ch => {
             if (ch.isPremium) return true;
             return ch.sources.length > 0 && ch.category !== "General";
-        });
+        }).slice(0, 100);
     },
 
     /**
