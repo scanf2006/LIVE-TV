@@ -1,61 +1,92 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import styles from './IPTV.module.css';
 
 const ChannelGrid = ({ channels, onSelect, currentId, favorites = [], onToggleFavorite }) => {
+    const pressTimerRef = useRef(null);
+    const [isPressing, setIsPressing] = useState(null); // 存储当前正在长按的频道ID
+
+    const handlePressStart = (channel) => {
+        setIsPressing(channel.id);
+        pressTimerRef.current = setTimeout(() => {
+            onToggleFavorite(channel.id);
+            // 长按成功后给一个简单的触感反馈（如果支持）或视觉闪烁
+            setIsPressing(null);
+            pressTimerRef.current = 'LONG_PRESSED';
+        }, 800);
+    };
+
+    const handlePressEnd = (channel) => {
+        if (pressTimerRef.current === 'LONG_PRESSED') {
+            // 如果已经是长按触发了，则不做播放动作
+            pressTimerRef.current = null;
+            setIsPressing(null);
+            return;
+        }
+
+        clearTimeout(pressTimerRef.current);
+        pressTimerRef.current = null;
+        setIsPressing(null);
+
+        // 短按逻辑：执行播放
+        onSelect(channel);
+        const video = document.querySelector('video');
+        if (video) {
+            const reqFS = video.requestFullscreen || video.webkitRequestFullscreen || video.mozRequestFullScreen || video.msRequestFullscreen;
+            if (reqFS) reqFS.call(video).catch(err => console.log(err));
+        }
+    };
+
     return (
         <div className={styles.gridSection}>
             <h3 className={styles.gridTitle}>
                 <span style={{ color: 'var(--primary)' }}>●</span> 全球精品频道 ({channels.length})
+                <span style={{ fontSize: '0.8rem', marginLeft: '1rem', opacity: 0.5 }}>提示：长按确定键收藏 / 短按播放</span>
             </h3>
             <div className={styles.grid}>
                 {channels.map((channel) => {
                     const isFavorited = favorites.includes(channel.id);
+                    const pressing = isPressing === channel.id;
 
                     return (
                         <div
                             key={channel.id}
-                            className={`${styles.card} ${currentId === channel.id ? styles.activeCard : ''}`}
+                            className={`${styles.card} ${currentId === channel.id ? styles.activeCard : ''} ${pressing ? styles.cardPressing : ''}`}
                             tabIndex="0"
                             role="button"
-                            aria-label={`播放频道: ${channel.name}`}
+                            aria-label={`频道: ${channel.name}，长按收藏`}
+                            onMouseDown={() => handlePressStart(channel)}
+                            onMouseUp={() => handlePressEnd(channel)}
+                            onMouseLeave={() => {
+                                clearTimeout(pressTimerRef.current);
+                                pressTimerRef.current = null;
+                                setIsPressing(null);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === 'OK') {
+                                    if (!pressTimerRef.current) handlePressStart(channel);
+                                }
+                            }}
+                            onKeyUp={(e) => {
+                                if (e.key === 'Enter' || e.key === 'OK') {
+                                    handlePressEnd(channel);
+                                }
+                            }}
                         >
-                            {/* 收藏按钮 - 独立可点击 */}
-                            <button
-                                className={`${styles.favoriteBtn} ${isFavorited ? styles.favoriteBtnActive : ''}`}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onToggleFavorite(channel.id);
-                                }}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.stopPropagation();
-                                        onToggleFavorite(channel.id);
-                                    }
-                                }}
-                                tabIndex="0"
-                                title={isFavorited ? "取消收藏" : "加入收藏"}
-                            >
-                                <span className={styles.favoriteIcon}>{isFavorited ? '❤️' : '🤍'}</span>
-                            </button>
+                            {/* 状态指示区 */}
+                            <div className={styles.cardTopLeft}>
+                                <span className={styles.favoriteIcon} style={{ fontSize: '1.2rem' }}>
+                                    {isFavorited ? '❤️' : ''}
+                                </span>
+                            </div>
 
                             <div className={styles.cardTopRight}>
                                 {isFavorited && <span className={styles.favoriteBadge}>SAVED</span>}
                                 {currentId === channel.id && <span className={styles.activeCardIndicator}></span>}
                             </div>
 
-                            <div
-                                style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}
-                                onClick={() => {
-                                    onSelect(channel);
-                                    const video = document.querySelector('video');
-                                    if (video) {
-                                        const reqFS = video.requestFullscreen || video.webkitRequestFullscreen || video.mozRequestFullScreen || video.msRequestFullscreen;
-                                        if (reqFS) reqFS.call(video).catch(err => console.log(err));
-                                    }
-                                }}
-                            >
+                            <div className={styles.cardContent}>
                                 {channel.logo ? (
                                     <img src={channel.logo} alt="" className={styles.cardLogo} loading="lazy" />
                                 ) : (
