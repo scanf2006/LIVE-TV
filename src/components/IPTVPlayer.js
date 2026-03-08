@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
 import styles from './IPTV.module.css';
@@ -8,10 +8,8 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
     const hlsRef = useRef(null);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
-
     const [activeSourceIndex, setActiveSourceIndex] = useState(0);
 
-    // 当切换频道时，重置线路索引
     useEffect(() => {
         setActiveSourceIndex(0);
     }, [channel?.id]);
@@ -49,38 +47,38 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
 
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
                         setLoading(false);
-                        if (autoPlay) video.play().catch(e => console.log("Autoplay blocked", e));
+                        if (autoPlay) video.play().catch(() => {});
                     });
 
-                    hls.on(Hls.Events.ERROR, (event, data) => {
-                        if (data.fatal) {
-                            switch (data.type) {
-                                case Hls.ErrorTypes.NETWORK_ERROR:
-                                    hls.startLoad();
-                                    break;
-                                case Hls.ErrorTypes.MEDIA_ERROR:
-                                    hls.recoverMediaError();
-                                    break;
-                                default:
-                                    setError("播放失败，请尝试切换线路或频道");
-                                    hls.destroy();
-                                    break;
-                            }
+                    hls.on(Hls.Events.ERROR, (_event, data) => {
+                        if (!data.fatal) return;
+
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                setError('Playback failed. Try another source or channel.');
+                                hls.destroy();
+                                break;
                         }
                     });
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                     video.src = currentUrl;
                     video.addEventListener('loadedmetadata', () => {
                         setLoading(false);
-                        if (autoPlay) video.play();
+                        if (autoPlay) video.play().catch(() => {});
                     });
-                    video.addEventListener('error', () => setError("当前设备不支持该流格式"));
+                    video.addEventListener('error', () => setError('This stream format is not supported on your device.'));
                 } else {
-                    setError("您的浏览器不支持 HLS 直播播放");
+                    setError('Your browser does not support HLS playback.');
                 }
             } catch (err) {
-                console.error("Hls.js 加载失败", err);
-                setError("播放驱动加载失败，请刷新页面");
+                console.error('Hls.js load error', err);
+                setError('Player failed to initialize. Please refresh.');
             }
         };
 
@@ -94,17 +92,17 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
         };
     }, [channel, activeSourceIndex, autoPlay]);
 
-    // 监听键盘左右键切换线路
     useEffect(() => {
         const handleSourceKey = (e) => {
             if (!channel?.sources || channel.sources.length <= 1) return;
 
             if (e.key === 'ArrowLeft') {
-                setActiveSourceIndex(prev => (prev - 1 + channel.sources.length) % channel.sources.length);
+                setActiveSourceIndex((prev) => (prev - 1 + channel.sources.length) % channel.sources.length);
             } else if (e.key === 'ArrowRight') {
-                setActiveSourceIndex(prev => (prev + 1) % channel.sources.length);
+                setActiveSourceIndex((prev) => (prev + 1) % channel.sources.length);
             }
         };
+
         window.addEventListener('keydown', handleSourceKey);
         return () => window.removeEventListener('keydown', handleSourceKey);
     }, [channel]);
@@ -112,8 +110,7 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
     if (!channel) return null;
 
     return (
-        <div className={`${styles.playerSection} ${loading || error ? '' : styles.overlayActive}`} tabIndex="0">
-            {/* 动态背景光效 */}
+        <section className={`${styles.playerSection} ${loading || error ? '' : styles.overlayActive}`}>
             {!error && !loading && <div className={styles.ambientLight} />}
 
             <video
@@ -131,11 +128,10 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
             )}
 
             {error && (
-                <div className={styles.playerOverlay} style={{ opacity: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' }}>
+                <div className={styles.playerOverlay} style={{ opacity: 1, backgroundColor: 'rgba(0,0,0,0.82)', justifyContent: 'center', alignItems: 'center' }}>
                     <div style={{ textAlign: 'center' }}>
-                        <span style={{ fontSize: '3rem', marginBottom: '1rem', display: 'block' }}>📡</span>
-                        <p style={{ color: '#ff4d4d', fontWeight: 'bold', fontSize: '1.2rem' }}>{error}</p>
-                        <p style={{ opacity: 0.5, marginTop: '0.5rem' }}>请尝试按 [方向键] 切换备选线路</p>
+                        <p style={{ color: '#ffd4d4', fontWeight: 700, fontSize: '1.15rem' }}>{error}</p>
+                        <p style={{ opacity: 0.75, marginTop: '0.45rem' }}>Use left/right to switch source.</p>
                     </div>
                 </div>
             )}
@@ -148,25 +144,23 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
                             <span className={styles.channelName}>{channel.name}</span>
                             {channel.sources && channel.sources.length > 1 && (
                                 <div className={styles.sourceSelector}>
-                                    线路 {activeSourceIndex + 1} / {channel.sources.length}
+                                    Source {activeSourceIndex + 1} / {channel.sources.length}
                                 </div>
                             )}
                         </div>
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem' }}>
-                            <div className={styles.categoryBadge}>{channel.isPremium ? 'PRO 精选' : 'Live'}</div>
-                            {channel.category && <span style={{ opacity: 0.6, fontSize: '0.9rem' }}>• {channel.category}</span>}
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                            <div className={styles.categoryBadge}>{channel.isPremium ? 'Premium' : 'Live'}</div>
+                            {channel.category && <span style={{ opacity: 0.75, fontSize: '0.95rem' }}>{channel.category}</span>}
                             <div className={styles.tvHint}>
-                                {channel.sources && channel.sources.length > 1 && (
-                                    <span style={{ color: 'var(--tv-primary)', fontWeight: 'bold' }}>按 [左右键] 切换线路</span>
-                                )}
-                                <span>按 [上下键] 切台</span>
-                                <span>按 [确认键] 全屏</span>
+                                {channel.sources && channel.sources.length > 1 && <span>Left/Right: source</span>}
+                                <span>Up/Down: channel</span>
+                                <span>OK: fullscreen</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
     );
 };
 
