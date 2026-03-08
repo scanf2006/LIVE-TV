@@ -1,11 +1,16 @@
-import './globals.css';
+﻿import './globals.css';
 
 export const metadata = {
   title: 'Global News PWA',
   description: 'Real-time global news aggregator with translation.',
-  manifest: '/manifest.json',
+  manifest: '/manifest.json'
+};
+
+export const viewport = {
   themeColor: '#121212',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1
 };
 
 export default function RootLayout({ children }) {

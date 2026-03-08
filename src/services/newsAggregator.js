@@ -1,12 +1,32 @@
-// 新闻聚合器 - 整合所有新闻源
-import * as Sentry from "@sentry/nextjs";
-import { RSSAdapter } from './rssAdapter';
+﻿import { RSSAdapter } from './rssAdapter';
 import { RedditAdapter } from './redditAdapter';
 import { TwitterAdapter } from './twitterAdapter';
 import { WeiboAdapter } from './weiboAdapter';
-import { BilibiliAdapter } from './bilibiliAdapter';
 import { YouTubeAdapter } from './youtubeAdapter';
 
+const TRANSLATION_MAX_ITEMS = 60;
+const TRANSLATION_CONCURRENCY = 5;
+const TRANSLATION_TIMEOUT_MS = 4000;
+
+function withTimeout(promise, timeoutMs) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Translation timeout')), timeoutMs))
+    ]);
+}
+
+async function runWithConcurrency(items, limit, worker) {
+    const queue = [...items];
+    const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+        while (queue.length > 0) {
+            const item = queue.shift();
+            if (!item) break;
+            await worker(item);
+        }
+    });
+
+    await Promise.allSettled(workers);
+}
 
 export const NewsAggregator = {
     async fetchAllNews() {
@@ -24,44 +44,39 @@ export const NewsAggregator = {
             if (rssNews.status === 'fulfilled') allNews = allNews.concat(rssNews.value);
             if (redditNews.status === 'fulfilled') allNews = allNews.concat(redditNews.value);
             if (twitterNews.status === 'fulfilled') allNews = allNews.concat(twitterNews.value);
-            if (weiboNews.status === 'fulfilled') {
-                allNews = allNews.concat(weiboNews.value);
-            }
+            if (weiboNews.status === 'fulfilled') allNews = allNews.concat(weiboNews.value);
             if (youtubeNews.status === 'fulfilled') allNews = allNews.concat(youtubeNews.value);
 
-            // Translation Step
+            // Default to original title to avoid empty UI text if translation fails/skips.
+            allNews.forEach((item) => {
+                if (!item.titleTranslated) {
+                    item.titleTranslated = item.titleOriginal;
+                }
+            });
+
             try {
                 const { translate } = require('google-translate-api-x');
 
-                // 翻译所有新闻,不限制数量
-                await Promise.allSettled(allNews.map(async (item) => {
-                    if (!item.titleOriginal) return;
-                    // 微博内容已是中文,跳过翻译
-                    if (item.source === '微博热搜') {
-                        item.titleTranslated = item.titleOriginal;
-                        return;
-                    }
-                    try {
-                        const res = await translate(item.titleOriginal, { to: 'zh-CN' });
-                        item.titleTranslated = res.text;
-                    } catch (e) {
-                        // keep original if translation fails
-                        console.error('Translation failed for item:', item.id, e.message);
-                        item.titleTranslated = item.titleOriginal; // 翻译失败时使用原文
-                    }
-                }));
+                const translatable = allNews
+                    .filter((item) => item?.titleOriginal && item.source !== '微博热搜')
+                    .slice(0, TRANSLATION_MAX_ITEMS);
 
-                // 不要替换allNews,保留所有新闻数据
-                // allNews = newsToTranslate; // 这行代码会丢弃未翻译的新闻!
-            } catch (e) {
-                console.error('Translation service error:', e);
+                await runWithConcurrency(translatable, TRANSLATION_CONCURRENCY, async (item) => {
+                    try {
+                        const res = await withTimeout(
+                            translate(item.titleOriginal, { to: 'zh-CN' }),
+                            TRANSLATION_TIMEOUT_MS
+                        );
+                        item.titleTranslated = res.text || item.titleOriginal;
+                    } catch {
+                        item.titleTranslated = item.titleOriginal;
+                    }
+                });
+            } catch (error) {
+                console.error('Translation service error:', error);
             }
 
-            // Sort by timestamp if available, otherwise randomize or keeping source order
-            // Ideally mix them up a bit so it's not just blocks of same source
-
             allNews.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
             return allNews;
         } catch (error) {
             console.error('NewsAggregator Error:', error);

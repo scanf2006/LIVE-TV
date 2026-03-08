@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef } from 'react';
 import Link from 'next/link';
@@ -7,52 +7,47 @@ import styles from './NewsCard.module.css';
 export default function NewsCard({ item, onDelete }) {
     const [translateX, setTranslateX] = useState(0);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
     const startX = useRef(0);
     const currentX = useRef(0);
-    const isDragging = useRef(false);
 
-    const DELETE_THRESHOLD = -100; // 向左滑动100px触发删除
+    const DELETE_THRESHOLD = -100;
 
     const handleTouchStart = (e) => {
         startX.current = e.touches[0].clientX;
-        isDragging.current = true;
+        setIsDragging(true);
     };
 
     const handleTouchMove = (e) => {
-        if (!isDragging.current) return;
+        if (!isDragging) return;
 
         currentX.current = e.touches[0].clientX;
         const diff = currentX.current - startX.current;
 
-        // 只允许向左滑动
         if (diff < 0) {
             setTranslateX(diff);
         }
     };
 
     const handleTouchEnd = () => {
-        if (!isDragging.current) return;
-        isDragging.current = false;
+        if (!isDragging) return;
+        setIsDragging(false);
 
-        // 判断是否触发删除
         if (translateX < DELETE_THRESHOLD) {
-            // 触发删除
             setIsDeleting(true);
-            setTranslateX(-500); // 滑出屏幕
+            setTranslateX(-500);
 
-            // 300ms后调用删除回调
             setTimeout(() => {
                 onDelete(item.id);
             }, 300);
         } else {
-            // 回弹
             setTranslateX(0);
         }
     };
 
     const cardStyle = {
         transform: `translateX(${translateX}px)`,
-        transition: isDragging.current ? 'none' : 'transform 0.3s ease-out',
+        transition: isDragging ? 'none' : 'transform 0.3s ease-out',
         opacity: isDeleting ? 0 : 1
     };
 
@@ -63,12 +58,10 @@ export default function NewsCard({ item, onDelete }) {
 
     return (
         <div className={styles.cardWrapper}>
-            {/* 删除指示器背景 */}
             <div className={styles.deleteIndicator} style={deleteIndicatorStyle}>
-                <span>🗑️ 删除</span>
+                <span>Delete</span>
             </div>
 
-            {/* 卡片 */}
             <Link
                 href={item?.url || '#'}
                 target="_blank"
@@ -80,26 +73,24 @@ export default function NewsCard({ item, onDelete }) {
                 onTouchEnd={handleTouchEnd}
             >
                 <div className={styles.content}>
-                    {/* 标题 */}
                     <h3 className={styles.title}>
-                        {item?.titleTranslated || item?.titleOriginal || '无标题'}
+                        {item?.titleTranslated || item?.titleOriginal || 'Untitled'}
                     </h3>
 
-                    {/* 元信息 */}
                     <div className={styles.meta}>
                         <span className={`
-                            ${styles.sourceTag} 
+                            ${styles.sourceTag}
                             ${item?.source?.includes('微博') ? styles.source_weibo :
                                 item?.source?.includes('Twitter') || item?.source?.includes('X') ? styles.source_twitter :
                                     item?.source?.toLowerCase().includes('reddit') ? styles.source_reddit :
                                         item?.source?.toLowerCase().includes('youtube') ? styles.source_youtube :
                                             styles.source_rss}
                         `}>
-                            {item?.source || '未知来源'}
+                            {item?.source || 'Unknown Source'}
                         </span>
                         {item?.views && (
                             <span className={styles.views}>
-                                <span>👁</span> {item.views}
+                                <span>Views</span> {item.views}
                             </span>
                         )}
                     </div>
