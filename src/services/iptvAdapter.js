@@ -1,38 +1,43 @@
 ﻿/**
- * Global IPTV adapter.
- * Aggregates multi-source M3U channels, classifies content, and validates stream availability.
+ * North America IPTV adapter (US/CA only, English-first).
  */
 
 const M3U_SOURCES = [
-    'https://iptv-org.github.io/iptv/countries/uk.m3u',
+    // Core country playlists
     'https://iptv-org.github.io/iptv/countries/us.m3u',
     'https://iptv-org.github.io/iptv/countries/ca.m3u',
-    'https://iptv-org.github.io/iptv/countries/au.m3u',
-    'https://iptv-org.github.io/iptv/countries/nz.m3u',
-    'https://iptv-org.github.io/iptv/countries/ie.m3u',
-    'https://iptv-org.github.io/iptv/countries/ph.m3u',
+
+    // High quality US ecosystem playlists
     'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_firetv.m3u',
-    'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_klowdtv.m3u',
     'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_pbs.m3u',
-    'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_tubi.m3u',
-    'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_plex.m3u',
     'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_pluto.m3u',
-    'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_samsung.m3u',
-    'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_canada.m3u8',
-    'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_usa.m3u8'
+    'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_plex.m3u',
+    'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_tubi.m3u',
+    'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/us_samsung.m3u'
 ];
 
 const CONTENT_MAPPING = {
-    News: ['news', 'bbc news', 'cnn', 'msnbc', 'reuters', 'bloomberg', 'cnbc', 'al jazeera', 'sky news', 'citynews', 'cbc news'],
-    Sports: ['sports', 'espn', 'tsn', 'stadium', 'fifa', 'f1', 'golf', 'football', 'nba', 'ufc', 'fight'],
-    Movies: ['movie', 'hbo', 'amc', 'cinema', 'film', 'star movies', 'paramount'],
-    Documentary: ['discovery', 'history', 'nasa', 'national geographic', 'nat geo', 'animal planet', 'science', 'nature', 'curiosity'],
-    Entertainment: ['entertainment', 'comedy', 'mtv', 'tnt', 'tbs', 'abc', 'cbs', 'nbc', 'fox', 'bbc', 'itv', 'channel 4', 'channel 5', 'hgtv', 'food'],
-    Kids: ['kids', 'nick', 'disney', 'cartoon', 'cbeebies', 'pop', 'boing', 'baby'],
-    Music: ['music', 'mtv', 'v2beat', 'stingray', 'concert']
+    News: ['news', 'cnn', 'msnbc', 'cnbc', 'bbc news', 'bloomberg', 'reuters', 'al jazeera english', 'sky news', 'cbc news', 'cp24', 'citynews', 'global news'],
+    Sports: ['sports', 'espn', 'tsn', 'sportsnet', 'nba', 'nfl', 'nhl', 'mlb', 'fifa', 'golf', 'ufc'],
+    Movies: ['movie', 'cinema', 'film', 'hbo', 'amc', 'paramount', 'showtime'],
+    Documentary: ['discovery', 'history', 'national geographic', 'nat geo', 'science', 'nature', 'nasa', 'smithsonian'],
+    Entertainment: ['abc', 'cbs', 'nbc', 'fox', 'ctv', 'global', 'citytv', 'entertainment', 'comedy', 'food', 'hgtv'],
+    Kids: ['kids', 'nick', 'disney', 'cartoon', 'family'],
+    Music: ['music', 'mtv', 'stingray', 'vevo', 'concert']
 };
 
-const FOREIGN_KEYWORDS = ['pashto', 'persian', 'iran', 'farsi', 'arabic', 'urdu', 'bengali', 'tamil', 'punjabi', 'turkish', 'hindi', 'afghan', 'espanol', 'spanish', 'norsk', 'polonia'];
+const FEATURED_ENGLISH_KEYWORDS = [
+    'abc news live', 'cbs news', 'nbc news now', 'fox weather', 'weather nation',
+    'cnn', 'msnbc', 'cnbc', 'bloomberg', 'bbc news', 'reuters', 'al jazeera english',
+    'pbs', 'nasa', 'cbc news', 'cp24', 'global news', 'citynews', 'ctv',
+    'espn', 'tsn', 'sportsnet'
+];
+
+const ENGLISH_BLOCKLIST = [
+    'espanol', 'spanish', 'latino', 'francais', 'french', 'portugues', 'portuguese',
+    'deutsch', 'german', 'italiano', 'italian', 'arabic', 'hindi', 'urdu', 'persian', 'farsi', 'turkish', 'russian'
+];
+
 const FOREIGN_TLDS = ['.ir', '.pk', '.af', '.tr', '.sa', '.ae', '.eg', '.in', '.ru', '.vn', '.cn', '.bd', '.il', '.br', '.it', '.de', '.fr', '.es'];
 
 function isPrivateIPv4(hostname) {
@@ -60,32 +65,25 @@ function isPrivateOrLocalHost(hostname) {
 
 export const IPTVAdapter = {
     normalizeName(rawName) {
-        const name = (rawName || '')
+        return (rawName || '')
             .replace(/\(.*\)/g, '')
             .replace(/\[.*\]/g, '')
-            .replace(/1080p|720p|fhd|hd|sd/gi, '')
+            .replace(/1080p|720p|fhd|hd|sd|uhd/gi, '')
             .replace(/\s+/g, ' ')
             .trim();
+    },
 
-        const lower = name.toLowerCase();
-        if (lower.includes('news live') || lower.includes('news now') || lower.includes('international') || lower.includes('world')) {
-            return name;
+    isEnglishChannel(name, originalCategory, tvgLanguage) {
+        const n = (name || '').toLowerCase();
+        const c = (originalCategory || '').toLowerCase();
+        const lang = (tvgLanguage || '').toLowerCase();
+
+        if (ENGLISH_BLOCKLIST.some((kw) => n.includes(kw) || c.includes(kw) || lang.includes(kw))) {
+            return false;
         }
 
-        const brands = ['abc', 'nbc', 'cbs', 'fox', 'pbs', 'bbc', 'cbc', 'itv', 'sky', 'cnn', 'hsn', 'qvc', 'global', 'ctv', 'citynews'];
-        for (const b of brands) {
-            const brandRegex = new RegExp(`^${b}(\\s+\\d+|\\s+[a-z]+|\\s*-\\s*[a-z]+)`, 'i');
-            if (brandRegex.test(name)) {
-                if (b === 'bbc') {
-                    const bbcSeq = name.match(/^bbc\s+(one|two|three|four|news|hd|alba|parliament)/i);
-                    if (bbcSeq) return bbcSeq[0].toUpperCase();
-                }
-                if (b === 'cbc' && lower.includes('network')) return 'CBC News Network';
-                return b.toUpperCase();
-            }
-        }
-
-        return name;
+        if (!lang) return true;
+        return lang.includes('en') || lang.includes('eng') || lang.includes('english');
     },
 
     isForeignHeuristic(name, logo, tvgId, originalCategory) {
@@ -94,25 +92,18 @@ export const IPTVAdapter = {
         const t = (tvgId || '').toLowerCase();
         const c = (originalCategory || '').toLowerCase();
 
-        if (FOREIGN_KEYWORDS.some((kw) => n.includes(kw) || l.includes(kw) || t.includes(kw) || c.includes(kw))) {
+        if (ENGLISH_BLOCKLIST.some((kw) => n.includes(kw) || l.includes(kw) || t.includes(kw) || c.includes(kw))) {
             return true;
         }
 
         try {
             if (l.startsWith('http')) {
                 const url = new URL(l);
-                const hostname = url.hostname;
-                if (FOREIGN_TLDS.some((tld) => hostname.endsWith(tld))) {
-                    return true;
-                }
+                if (FOREIGN_TLDS.some((tld) => url.hostname.endsWith(tld))) return true;
             }
         } catch {
-            // Ignore invalid logo URL.
+            // ignore bad logo URLs
         }
-
-        const foreignIdRegex = /\.@(?!us|uk|ca|en|com|org|net|edu|int)[a-z]{2,3}$/;
-        if (foreignIdRegex.test(t)) return true;
-        if (t.includes('.ir@') || t.includes('.pk@') || t.includes('.tr@')) return true;
 
         return false;
     },
@@ -133,12 +124,18 @@ export const IPTVAdapter = {
         return 'General';
     },
 
-    isPremiumChannel(name, logo, tvgId) {
-        const premiumKeywords = ['cnn', 'bbc', 'hbo', 'discovery', 'history', 'star', 'espn', 'tsn', 'abc', 'nbc', 'cbs', 'fox'];
+    isPremiumChannel(name) {
+        const premiumKeywords = [
+            'abc', 'cbs', 'nbc', 'fox', 'pbs', 'cnn', 'msnbc', 'cnbc', 'bloomberg',
+            'cbc', 'cp24', 'ctv', 'global', 'citynews', 'espn', 'tsn', 'sportsnet', 'nasa'
+        ];
         const n = (name || '').toLowerCase();
-
-        if (this.isForeignHeuristic(name, logo, tvgId)) return false;
         return premiumKeywords.some((kw) => n.includes(kw));
+    },
+
+    isFeaturedChannel(name) {
+        const n = (name || '').toLowerCase();
+        return FEATURED_ENGLISH_KEYWORDS.some((kw) => n.includes(kw));
     },
 
     isAllowedStreamUrl(rawUrl) {
@@ -160,8 +157,7 @@ export const IPTVAdapter = {
                 const response = await fetch(url);
                 if (!response.ok) return;
                 const m3uText = await response.text();
-                const parsed = this.parseM3U(m3uText);
-                rawChannels.push(...parsed);
+                rawChannels.push(...this.parseM3U(m3uText));
             } catch (e) {
                 console.error(`[IPTV] Source error: ${url}`, e.message);
             }
@@ -170,14 +166,16 @@ export const IPTVAdapter = {
         const normalizedMap = new Map();
 
         for (const ch of rawChannels) {
-            const rawName = ch.name || 'Unknown';
-            const baseName = this.normalizeName(rawName);
+            const baseName = this.normalizeName(ch.name || 'Unknown');
             if (!baseName) continue;
+
+            if (!this.isEnglishChannel(baseName, ch.category, ch.tvgLanguage)) continue;
 
             const category = this.getCategoryByContent(baseName, ch.category, ch.logo, ch.tvgId);
             if (category === 'Foreign') continue;
 
-            const isPremium = this.isPremiumChannel(baseName, ch.logo, ch.tvgId);
+            const isPremium = this.isPremiumChannel(baseName);
+            const isFeatured = this.isFeaturedChannel(baseName);
 
             if (!normalizedMap.has(baseName)) {
                 normalizedMap.set(baseName, {
@@ -185,27 +183,36 @@ export const IPTVAdapter = {
                     name: baseName,
                     category,
                     isPremium,
+                    isFeatured,
                     logo: ch.logo,
                     sources: []
                 });
             }
 
             const existing = normalizedMap.get(baseName);
+            existing.isFeatured = existing.isFeatured || isFeatured;
+            if (ch.logo && !existing.logo) existing.logo = ch.logo;
+
             if (!existing.sources.find((s) => s.url === ch.url)) {
                 existing.sources.push({
                     url: ch.url,
-                    label: rawName,
+                    label: ch.name,
                     qualityScore: ch.qualityScore,
                     tvgId: ch.tvgId
                 });
             }
-            if (ch.logo && !existing.logo) existing.logo = ch.logo;
         }
 
-        const aggregated = Array.from(normalizedMap.values());
-        return aggregated
-            .filter((ch) => (ch.isPremium ? true : ch.sources.length > 0 && ch.category !== 'General'))
-            .slice(0, 300);
+        const aggregated = Array.from(normalizedMap.values())
+            .filter((ch) => ch.sources.length > 0 && ch.category !== 'Foreign')
+            .sort((a, b) => {
+                if (a.isFeatured !== b.isFeatured) return b.isFeatured ? 1 : -1;
+                if (a.isPremium !== b.isPremium) return b.isPremium ? 1 : -1;
+                return a.name.localeCompare(b.name);
+            })
+            .slice(0, 260);
+
+        return aggregated;
     },
 
     parseM3U(text) {
@@ -217,6 +224,7 @@ export const IPTVAdapter = {
             line = line.trim();
             if (line.startsWith('#EXTINF:')) {
                 currentChannel = { qualityScore: 0 };
+
                 const commaIndex = line.lastIndexOf(',');
                 if (commaIndex !== -1) {
                     currentChannel.name = line.substring(commaIndex + 1).trim();
@@ -225,18 +233,25 @@ export const IPTVAdapter = {
                     else if (n.includes('720p') || n.includes('hd')) currentChannel.qualityScore = 80;
                     else if (n.includes('480p') || n.includes('sd')) currentChannel.qualityScore = 50;
                 }
+
                 const logoMatch = line.match(/tvg-logo="([^"]+)"/);
                 if (logoMatch) currentChannel.logo = logoMatch[1];
+
                 const groupMatch = line.match(/group-title="([^"]+)"/);
                 if (groupMatch) currentChannel.category = groupMatch[1];
+
                 const idMatch = line.match(/tvg-id="([^"]+)"/);
                 if (idMatch) currentChannel.tvgId = idMatch[1];
+
+                const langMatch = line.match(/tvg-language="([^"]+)"/);
+                if (langMatch) currentChannel.tvgLanguage = langMatch[1];
             } else if (line.startsWith('http') && currentChannel) {
                 currentChannel.url = line;
                 channels.push(currentChannel);
                 currentChannel = null;
             }
         }
+
         return channels;
     },
 
@@ -259,13 +274,13 @@ export const IPTVAdapter = {
             const latency = Date.now() - start;
             if (response.ok || response.status === 206) return { isValid: true, latency };
 
-            // Some streams block HEAD but allow GET.
             if (response.status === 403 || response.status === 405) {
                 const fallback = await fetch(url, {
                     method: 'GET',
                     signal: controller.signal,
                     headers: { 'User-Agent': 'Mozilla/5.0', Range: 'bytes=0-1' }
                 });
+
                 if (fallback.ok || fallback.status === 206) {
                     return { isValid: true, latency: Date.now() - start };
                 }
@@ -283,9 +298,10 @@ export const IPTVAdapter = {
         const allChannels = await this.fetchCanadaChannels();
         const verifiedGroups = [];
 
-        const premiumOnes = allChannels.filter((c) => c.isPremium);
-        const normalOnes = allChannels.filter((c) => !c.isPremium).slice(0, 200);
-        const pool = [...premiumOnes, ...normalOnes];
+        const featured = allChannels.filter((c) => c.isFeatured);
+        const premium = allChannels.filter((c) => c.isPremium && !c.isFeatured);
+        const normal = allChannels.filter((c) => !c.isPremium && !c.isFeatured).slice(0, 120);
+        const pool = [...featured, ...premium, ...normal];
 
         const batchSize = 10;
         for (let i = 0; i < pool.length; i += batchSize) {
@@ -307,11 +323,12 @@ export const IPTVAdapter = {
             }));
 
             verifiedGroups.push(...results.filter(Boolean));
-            if (verifiedGroups.length >= 200) break;
+            if (verifiedGroups.length >= 180) break;
         }
 
         return verifiedGroups.sort((a, b) => {
-            if (a.isPremium !== b.isPremium) return b.isPremium ? -1 : 1;
+            if (a.isFeatured !== b.isFeatured) return b.isFeatured ? 1 : -1;
+            if (a.isPremium !== b.isPremium) return b.isPremium ? 1 : -1;
             return a.category.localeCompare(b.category);
         });
     }

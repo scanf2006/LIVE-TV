@@ -110,7 +110,7 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
     if (!channel) return null;
 
     return (
-        <section className={`${styles.playerSection} ${loading || error ? '' : styles.overlayActive}`}>
+        <section className={`${styles.playerSection} ${loading || error ? '' : styles.overlayActive}`} data-player-shell="true">
             {!error && !loading && <div className={styles.ambientLight} />}
 
             <video

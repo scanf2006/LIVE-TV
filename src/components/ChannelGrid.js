@@ -31,10 +31,10 @@ const ChannelGrid = ({ channels, onSelect, currentId, favorites = [], onToggleFa
 
         onSelect(channel);
 
-        const video = document.querySelector('video');
-        if (video) {
-            const reqFS = video.requestFullscreen || video.webkitRequestFullscreen || video.mozRequestFullScreen || video.msRequestFullscreen;
-            if (reqFS) reqFS.call(video).catch(() => {});
+        const playerShell = document.querySelector('[data-player-shell="true"]');
+        if (playerShell) {
+            const reqFS = playerShell.requestFullscreen || playerShell.webkitRequestFullscreen || playerShell.mozRequestFullScreen || playerShell.msRequestFullscreen;
+            if (reqFS) reqFS.call(playerShell).catch(() => {});
         }
     };
 

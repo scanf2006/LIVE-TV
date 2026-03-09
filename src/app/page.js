@@ -122,12 +122,12 @@ export default function Home() {
       }
 
       if (key === 'f' || key === 'F' || key === 'MediaPlayPause') {
-        const video = document.querySelector('video');
-        if (video) {
+        const playerShell = document.querySelector('[data-player-shell="true"]');
+        if (playerShell) {
           if (document.fullscreenElement) {
             document.exitFullscreen();
           } else {
-            video.requestFullscreen().catch(() => {});
+            playerShell.requestFullscreen().catch(() => {});
           }
         }
         return;

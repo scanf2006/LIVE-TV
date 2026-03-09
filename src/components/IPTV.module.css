@@ -425,3 +425,23 @@
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
 }
+
+.playerSection:fullscreen,
+.playerSection:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    aspect-ratio: auto;
+    margin: 0;
+    border-radius: 0;
+    border: 0;
+    box-shadow: none;
+    background: #000;
+}
+
+.playerSection:fullscreen .videoPlayer,
+.playerSection:-webkit-full-screen .videoPlayer {
+    width: 100vw;
+    height: 100vh;
+    object-fit: contain;
+    background: #000;
+}
