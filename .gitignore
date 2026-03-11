@@ -48,3 +48,9 @@ sentry.properties
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Android / Capacitor build artifacts
+.android-tools/
+android/
+capacitor.config.ts
+*.apk

@@ -1,6 +1,6 @@
 {
   "name": "global-news-pwa",
-  "version": "0.9.9",
+  "version": "0.9.10",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -21,6 +21,9 @@
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "jimp": "^0.16.1"

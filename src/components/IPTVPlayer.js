@@ -47,7 +47,7 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
 
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
                         setLoading(false);
-                        if (autoPlay) video.play().catch(() => {});
+                        if (autoPlay) video.play().catch(() => { });
                     });
 
                     hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -70,7 +70,7 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
                     video.src = currentUrl;
                     video.addEventListener('loadedmetadata', () => {
                         setLoading(false);
-                        if (autoPlay) video.play().catch(() => {});
+                        if (autoPlay) video.play().catch(() => { });
                     });
                     video.addEventListener('error', () => setError('This stream format is not supported on your device.'));
                 } else {
@@ -111,11 +111,10 @@ const IPTVPlayer = ({ channel, autoPlay = true }) => {
 
     return (
         <section className={`${styles.playerSection} ${loading || error ? '' : styles.overlayActive}`} data-player-shell="true">
-            {!error && !loading && <div className={styles.ambientLight} />}
-
             <video
                 ref={videoRef}
                 className={styles.videoPlayer}
+                style={{ position: 'relative', zIndex: 1 }}
                 controls={false}
                 playsInline
                 poster={channel.logo}
